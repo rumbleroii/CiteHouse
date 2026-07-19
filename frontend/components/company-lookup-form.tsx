@@ -5,28 +5,43 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { lookupCompanyByNumber } from "@/lib/api";
 import { parseCompanyQuery } from "@/lib/company-query";
 
 export function CompanyLookupForm() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<{
-    type: "name" | "number";
-    value: string;
-  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [companyNumber, setCompanyNumber] = useState<string | null>(null);
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const result = parseCompanyQuery(query);
+    setCompanyName(null);
+    setCompanyNumber(null);
 
+    const result = parseCompanyQuery(query);
     if (!result.ok) {
       setError(result.error);
-      setSubmitted(null);
+      return;
+    }
+
+    if (result.type !== "number") {
+      setError("For now, enter an exact Companies House registration number");
       return;
     }
 
     setError(null);
-    setSubmitted({ type: result.type, value: result.value });
+    setLoading(true);
+    try {
+      const data = await lookupCompanyByNumber(result.value);
+      setCompanyName(data.company_name);
+      setCompanyNumber(data.company_number);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Lookup failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -41,10 +56,13 @@ export function CompanyLookupForm() {
             setQuery(e.target.value);
             if (error) setError(null);
           }}
-          placeholder="Company name or registration number"
-          autoComplete="organization"
+          placeholder="e.g. 00000006"
+          autoComplete="off"
+          disabled={loading}
           aria-invalid={!!error}
-          aria-describedby={error ? "company-query-error" : "company-query-hint"}
+          aria-describedby={
+            error ? "company-query-error" : "company-query-hint"
+          }
         />
         {error ? (
           <p id="company-query-error" className="text-destructive text-sm">
@@ -52,21 +70,23 @@ export function CompanyLookupForm() {
           </p>
         ) : (
           <p id="company-query-hint" className="text-muted-foreground text-sm">
-            e.g. Acme Ltd or 01234567
+            Enter an exact Companies House registration number
           </p>
         )}
       </div>
 
-      <Button type="submit" className="w-full sm:w-auto">
-        Look up
+      <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
+        {loading ? "Looking up…" : "Look up"}
       </Button>
 
-      {submitted && (
-        <p className="text-muted-foreground text-sm">
-          Looking up{" "}
-          <span className="text-foreground font-medium">{submitted.value}</span>{" "}
-          ({submitted.type === "number" ? "registration number" : "company name"})
-        </p>
+      {companyName && (
+        <div className="flex flex-col gap-1 text-sm">
+          <p className="text-muted-foreground">Company name</p>
+          <p className="text-lg font-medium tracking-tight">{companyName}</p>
+          {companyNumber && (
+            <p className="text-muted-foreground">{companyNumber}</p>
+          )}
+        </div>
       )}
     </form>
   );

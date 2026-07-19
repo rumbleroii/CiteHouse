@@ -6,7 +6,7 @@ export default function Home() {
       <div className="flex max-w-md flex-col gap-2 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Citehouse</h1>
         <p className="text-muted-foreground text-sm">
-          Look up a UK company by name or Companies House number
+          Look up a UK company by Companies House number
         </p>
       </div>
       <CompanyLookupForm />

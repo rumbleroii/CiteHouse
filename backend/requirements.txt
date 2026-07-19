@@ -5,3 +5,4 @@ langchain
 cursor-sdk
 pydantic
 httpx
+python-dotenv
