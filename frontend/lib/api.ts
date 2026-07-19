@@ -1,3 +1,5 @@
+import type { CompanyIntelligenceReport } from "@/lib/intelligence";
+
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -22,6 +24,8 @@ export type AgenticSearchResponse = {
   company: CompanyLookupResponse | null;
   candidates: CompanyLookupResponse[];
 };
+
+export type { CompanyIntelligenceReport };
 
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
@@ -71,6 +75,21 @@ export async function agenticSearch(input: {
 
   if (!res.ok) {
     throw new Error(await readError(res, "Agentic search failed"));
+  }
+
+  return res.json();
+}
+
+export async function fetchIntelligenceReport(
+  companyNumber: string,
+): Promise<CompanyIntelligenceReport> {
+  const res = await fetch(
+    `${API_BASE}/api/intelligence/${encodeURIComponent(companyNumber)}`,
+    { cache: "no-store" },
+  );
+
+  if (!res.ok) {
+    throw new Error(await readError(res, "Intelligence report failed"));
   }
 
   return res.json();

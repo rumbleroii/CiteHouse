@@ -2,12 +2,15 @@
 
 import { useState, type FormEvent } from "react";
 
+import { IntelligenceDashboard } from "@/components/intelligence/intelligence-dashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   agenticSearch,
+  fetchIntelligenceReport,
   lookupCompanyByNumber,
+  type CompanyIntelligenceReport,
   type CompanyLookupResponse,
 } from "@/lib/api";
 import { parseCompanyQuery } from "@/lib/company-query";
@@ -105,6 +108,9 @@ export function CompanyLookupForm() {
   const [awaitingFollowUp, setAwaitingFollowUp] = useState(false);
   const [company, setCompany] = useState<CompanyLookupResponse | null>(null);
   const [candidates, setCandidates] = useState<CompanyLookupResponse[]>([]);
+  const [report, setReport] = useState<CompanyIntelligenceReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
 
   function resetSession() {
     setCompany(null);
@@ -112,6 +118,25 @@ export function CompanyLookupForm() {
     setAgentMessage(null);
     setAwaitingFollowUp(false);
     setPriorQuery(null);
+    setReport(null);
+    setReportError(null);
+    setReportLoading(false);
+  }
+
+  async function loadIntelligence(companyNumber: string) {
+    setReportLoading(true);
+    setReportError(null);
+    setReport(null);
+    try {
+      const data = await fetchIntelligenceReport(companyNumber);
+      setReport(data);
+    } catch (err) {
+      setReportError(
+        err instanceof Error ? err.message : "Intelligence report failed",
+      );
+    } finally {
+      setReportLoading(false);
+    }
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -131,6 +156,7 @@ export function CompanyLookupForm() {
         const data = await lookupCompanyByNumber(result.value);
         setCompany(data);
         setQuery("");
+        void loadIntelligence(data.company_number);
         return;
       }
 
@@ -162,6 +188,9 @@ export function CompanyLookupForm() {
         setAgentMessage(data.message);
         setCompany(data.company);
         setQuery("");
+        if (data.company?.company_number) {
+          void loadIntelligence(data.company.company_number);
+        }
         return;
       }
 
@@ -169,6 +198,8 @@ export function CompanyLookupForm() {
       setPriorQuery(isFollowUp ? priorQuery : userText);
       setAwaitingFollowUp(true);
       setCompany(null);
+      setReport(null);
+      setReportError(null);
       setCandidates(data.candidates);
       setAgentMessage(data.message);
       setQuery("");
@@ -180,93 +211,114 @@ export function CompanyLookupForm() {
   }
 
   return (
-    <div className="grid min-h-[70vh] w-full grid-cols-1 md:grid-cols-2">
-      <section className="flex flex-col gap-8 px-6 py-10 md:pr-10 lg:px-12">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">Citehouse</h1>
-          <p className="text-muted-foreground text-sm">
-            Look up a UK company by name or Companies House number
-          </p>
-        </div>
-
-        <form onSubmit={onSubmit} className="flex max-w-lg flex-col gap-4">
+    <div className="flex w-full flex-col">
+      <div className="grid min-h-[70vh] w-full grid-cols-1 md:grid-cols-2">
+        <section className="flex flex-col gap-8 px-6 py-10 md:pr-10 lg:px-12">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="company-query">
-              {awaitingFollowUp ? "Add a detail" : "Company"}
-            </Label>
-            <Input
-              id="company-query"
-              name="company-query"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                if (error) setError(null);
-              }}
-              placeholder={
-                awaitingFollowUp
-                  ? "e.g. in London, active, incorporated 2019"
-                  : "Name or number, e.g. Tesco or 00000006"
-              }
-              autoComplete="off"
-              disabled={loading}
-              aria-invalid={!!error}
-              aria-describedby={error ? "company-query-error" : undefined}
-            />
-            {error && (
-              <p id="company-query-error" className="text-destructive text-sm">
-                {error}
-              </p>
-            )}
+            <h1 className="text-3xl font-semibold tracking-tight">Citehouse</h1>
+            <p className="text-muted-foreground text-sm">
+              Look up a UK company by name or Companies House number
+            </p>
           </div>
 
-          <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner className="border-primary-foreground/30 border-t-primary-foreground" />
-                Searching…
-              </span>
-            ) : awaitingFollowUp ? (
-              "Continue"
-            ) : (
-              "Look up"
-            )}
-          </Button>
-        </form>
+          <form onSubmit={onSubmit} className="flex max-w-lg flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="company-query">
+                {awaitingFollowUp ? "Add a detail" : "Company"}
+              </Label>
+              <Input
+                id="company-query"
+                name="company-query"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder={
+                  awaitingFollowUp
+                    ? "e.g. in London, active, incorporated 2019"
+                    : "Name or number, e.g. Tesco or 00000006"
+                }
+                autoComplete="off"
+                disabled={loading}
+                aria-invalid={!!error}
+                aria-describedby={error ? "company-query-error" : undefined}
+              />
+              {error && (
+                <p id="company-query-error" className="text-destructive text-sm">
+                  {error}
+                </p>
+              )}
+            </div>
 
-        {loading && (
-          <p
-            className="text-muted-foreground flex max-w-lg items-center gap-2 text-sm"
-            role="status"
-            aria-live="polite"
-          >
-            <Spinner />
-            Searching Companies House…
-          </p>
-        )}
-
-        {!loading && agentMessage && (
-          <p className="max-w-lg text-sm leading-relaxed">{agentMessage}</p>
-        )}
-
-        {!loading && !company && candidates.length > 0 && (
-          <ul className="flex max-w-lg flex-col gap-2 text-sm">
-            {candidates.map((item) => (
-              <li key={item.company_number} className="leading-snug">
-                <span className="font-medium">{item.company_name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {item.company_number}
-                  {item.address_snippet ? ` · ${item.address_snippet}` : ""}
+            <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="border-primary-foreground/30 border-t-primary-foreground" />
+                  Searching…
                 </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ) : awaitingFollowUp ? (
+                "Continue"
+              ) : (
+                "Look up"
+              )}
+            </Button>
+          </form>
 
-      <section className="border-border border-t px-6 py-10 md:border-t-0 md:border-l md:pl-10 lg:px-12">
-        <CompanyPanel company={company} loading={loading} />
-      </section>
+          {loading && (
+            <p
+              className="text-muted-foreground flex max-w-lg items-center gap-2 text-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner />
+              Searching Companies House…
+            </p>
+          )}
+
+          {!loading && agentMessage && (
+            <p className="max-w-lg text-sm leading-relaxed">{agentMessage}</p>
+          )}
+
+          {!loading && !company && candidates.length > 0 && (
+            <ul className="flex max-w-lg flex-col gap-2 text-sm">
+              {candidates.map((item) => (
+                <li key={item.company_number} className="leading-snug">
+                  <span className="font-medium">{item.company_name}</span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {item.company_number}
+                    {item.address_snippet ? ` · ${item.address_snippet}` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="border-border border-t px-6 py-10 md:border-t-0 md:border-l md:pl-10 lg:px-12">
+          <CompanyPanel company={company} loading={loading} />
+        </section>
+      </div>
+
+      {(reportLoading || reportError || report) && (
+        <section className="border-border border-t px-6 py-10 lg:px-12">
+          {reportLoading && (
+            <p
+              className="text-muted-foreground flex items-center gap-2 text-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <Spinner />
+              Loading intelligence report…
+            </p>
+          )}
+          {!reportLoading && reportError && (
+            <p className="text-destructive text-sm">{reportError}</p>
+          )}
+          {!reportLoading && report && <IntelligenceDashboard report={report} />}
+        </section>
+      )}
     </div>
   );
 }

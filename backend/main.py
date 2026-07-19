@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import agentic_search, company, health, search_company, web_search
+from routers import agentic_search, company, health, intelligence, search_company, web_search
 
 load_dotenv()
 
@@ -21,3 +21,4 @@ app.include_router(search_company.router, prefix="/api")
 app.include_router(agentic_search.router, prefix="/api")
 app.include_router(company.router, prefix="/api")
 app.include_router(web_search.router, prefix="/api")
+app.include_router(intelligence.router, prefix="/api")

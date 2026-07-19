@@ -1,0 +1,137 @@
+{
+  "company": {
+    "company_number": "00445790",
+    "company_name": "TESCO PLC",
+    "company_status": "active",
+    "company_type": "plc",
+    "date_of_creation": "1947-11-27",
+    "address_snippet": "Tesco House, Shire Park, Kestrel Way, Welwyn Garden City, AL7 1GA",
+    "locality": "Welwyn Garden City",
+    "region": "Hertfordshire",
+    "country": "United Kingdom",
+    "sic_codes": ["47110"]
+  },
+  "business_model": {
+    "sic_codes": ["47110"],
+    "revenue_model_tags": ["B2C", "retail", "grocery", "marketplace"],
+    "customer_segments": ["UK consumers", "households", "small businesses via wholesale"],
+    "products_services": [
+      "Grocery retail",
+      "Tesco Clubcard",
+      "Tesco Mobile",
+      "Whoosh delivery",
+      "F&F clothing"
+    ],
+    "summary": "Tesco PLC operates a large UK grocery and general merchandise retail network, selling food and everyday goods through stores and online channels. Revenue is primarily retail margin on grocery and non-food, supported by loyalty (Clubcard), fulfilment (delivery and Whoosh), and adjacent services such as mobile. The core customer is the UK household shopper, with some B2B wholesale reach. SIC 47110 (retail sale in non-specialised stores with food predominating) anchors the statutory activity. Scale and private-label ranges support a multi-format model from Express to Extra. Online and rapid delivery extend the same assortment beyond the store footprint.",
+    "citations": [
+      {
+        "title": "Companies House profile — SIC",
+        "source_ref": "companies_house:profile.sic_codes",
+        "snippet": "SIC 47110"
+      },
+      {
+        "title": "Tesco — About us",
+        "url": "https://www.tescoplc.com/about/",
+        "snippet": "UK grocery retail and services"
+      }
+    ],
+    "confidence": "high"
+  },
+  "competition": {
+    "arena": {
+      "sic_codes": ["47110"],
+      "geography": "United Kingdom"
+    },
+    "peer_set": [
+      { "company_name": "J SAINSBURY PLC", "company_number": "00185647" },
+      { "company_name": "WM MORRISON SUPERMARKETS LIMITED", "company_number": "00358949" },
+      { "company_name": "ASDA STORES LIMITED", "company_number": "00464777" },
+      { "company_name": "ALDI STORES LIMITED", "company_number": "02321869" },
+      { "company_name": "LIDL GREAT BRITAIN LIMITED", "company_number": "02836129" },
+      { "company_name": "WAITROSE LIMITED", "company_number": "00099405" },
+      { "company_name": "ICELAND FOODS LIMITED", "company_number": "01107406" },
+      { "company_name": "MARKS AND SPENCER PLC", "company_number": "00214436" }
+    ],
+    "peer_count_estimate": 4200,
+    "peer_count_confidence": "medium",
+    "rivalry_score": 5,
+    "rivalry_evidence": [
+      "Many active UK companies share SIC 47110 in Companies House advanced search",
+      "National grocery chains compete on price, convenience, and loyalty",
+      "Discounters and online players intensify price pressure"
+    ],
+    "summary": "UK grocery retail is highly contested. The arena is non-specialised food-predominant retail (SIC 47110) nationwide. Peer density is high, with multiple national chains and thousands of smaller operators. Rivalry is scored at 5 given price competition, format proliferation, and share-of-voice among major grocers.",
+    "citations": [
+      {
+        "title": "Companies House advanced search — SIC 47110",
+        "source_ref": "companies_house:advanced-search.total_results",
+        "snippet": "peer_count_estimate from active SIC×UK search"
+      },
+      {
+        "title": "UK grocery market coverage",
+        "url": "https://www.thegrocer.co.uk/",
+        "snippet": "Trade coverage of supermarket rivalry"
+      }
+    ],
+    "confidence": "high"
+  },
+  "quality": {
+    "customer_rating": {
+      "score": 3.8,
+      "scale": 5.0,
+      "n_reviews": 125000,
+      "platforms": ["Trustpilot", "Google"]
+    },
+    "theme_sentiment": [
+      {
+        "theme": "value / Clubcard",
+        "polarity": "positive",
+        "evidence": "Reviewers frequently cite Clubcard prices and promotions as a reason to shop."
+      },
+      {
+        "theme": "delivery reliability",
+        "polarity": "mixed",
+        "evidence": "Online and Whoosh delivery praised when on time; complaints when slots slip."
+      },
+      {
+        "theme": "in-store experience",
+        "polarity": "mixed",
+        "evidence": "Convenience of local stores noted; some reviews mention stock gaps."
+      }
+    ],
+    "trade_press": {
+      "tone": "mixed",
+      "notables": [
+        "Ongoing coverage of grocery price competition",
+        "Clubcard and retail media often featured in trade press"
+      ]
+    },
+    "quality_score": 4,
+    "quality_rationale": "Large review volume with mid-to-upper ratings and recognisable brand presence support a strong but not perfect quality score; mixed delivery and in-store themes prevent a 5.",
+    "summary": "Customer sentiment is broadly constructive, centred on value and loyalty, with mixed feedback on fulfilment and store execution. Trade press tone is mixed, reflecting competitive grocery dynamics rather than acute reputational crisis. Overall quality is scored 4/5 with medium-high confidence given abundant public reviews.",
+    "citations": [
+      {
+        "title": "Trustpilot — Tesco",
+        "url": "https://www.trustpilot.com/review/www.tesco.com",
+        "snippet": "Aggregate rating and review volume (demo fixture)"
+      },
+      {
+        "title": "The Grocer — supermarket coverage",
+        "url": "https://www.thegrocer.co.uk/",
+        "snippet": "Trade press tone sample"
+      }
+    ],
+    "confidence": "medium"
+  },
+  "confidence": {
+    "overall": "medium",
+    "business_model": "high",
+    "competition": "high",
+    "quality": "medium"
+  },
+  "gaps": [
+    "Customer ratings are demo aggregates, not live API pulls",
+    "Peer count is illustrative of SIC density, not a audited market share model",
+    "No filings/iXBRL financials in this P0 mock"
+  ]
+}
