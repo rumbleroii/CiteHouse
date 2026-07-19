@@ -12,6 +12,23 @@ export type CompanyLookupResponse = {
   address_snippet?: string;
 };
 
+export type AgenticSearchResponse = {
+  status: "found" | "needs_clarification" | "not_found";
+  message: string;
+  company: CompanyLookupResponse | null;
+  candidates: CompanyLookupResponse[];
+};
+
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
 export async function lookupCompanyByNumber(
   companyNumber: string,
 ): Promise<CompanyLookupResponse> {
@@ -21,14 +38,35 @@ export async function lookupCompanyByNumber(
   );
 
   if (!res.ok) {
-    let message = "Lookup failed";
-    try {
-      const body = await res.json();
-      if (typeof body?.detail === "string") message = body.detail;
-    } catch {
-      // ignore parse errors
-    }
-    throw new Error(message);
+    throw new Error(await readError(res, "Lookup failed"));
+  }
+
+  return res.json();
+}
+
+export async function agenticSearch(input: {
+  message: string;
+  priorQuery?: string | null;
+  candidates?: CompanyLookupResponse[];
+}): Promise<AgenticSearchResponse> {
+  const res = await fetch(`${API_BASE}/api/search/agentic`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: input.message,
+      prior_query: input.priorQuery || undefined,
+      candidates: input.candidates?.map((c) => ({
+        company_number: c.company_number,
+        company_name: c.company_name,
+        company_status: c.company_status,
+        address_snippet: c.address_snippet,
+      })),
+    }),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(await readError(res, "Agentic search failed"));
   }
 
   return res.json();
