@@ -3,7 +3,6 @@ import { BusinessModelSectionView } from "@/components/intelligence/business-mod
 import { CompetitionSectionView } from "@/components/intelligence/competition-section";
 import { IdentityHeader } from "@/components/intelligence/identity-header";
 import { QualitySectionView } from "@/components/intelligence/quality-section";
-import { ReportMeta } from "@/components/intelligence/report-meta";
 
 export function IntelligenceDashboard({
   report,
@@ -11,20 +10,11 @@ export function IntelligenceDashboard({
   report: CompanyIntelligenceReport;
 }) {
   return (
-    <div className="flex flex-col gap-10">
+    <article className="mx-auto max-w-3xl px-5 py-12 sm:px-8 sm:py-16">
       <IdentityHeader company={report.company} />
-      <div className="border-border border-t pt-8">
-        <BusinessModelSectionView section={report.business_model} />
-      </div>
-      <div className="border-border border-t pt-8">
-        <CompetitionSectionView section={report.competition} />
-      </div>
-      <div className="border-border border-t pt-8">
-        <QualitySectionView section={report.quality} />
-      </div>
-      <div className="border-border border-t pt-8">
-        <ReportMeta confidence={report.confidence} gaps={report.gaps} />
-      </div>
-    </div>
+      <BusinessModelSectionView section={report.business_model} />
+      <CompetitionSectionView section={report.competition} />
+      <QualitySectionView section={report.quality} />
+    </article>
   );
 }

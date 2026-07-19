@@ -44,7 +44,6 @@ async def get_mock_report(company_number: str) -> CompanyIntelligenceReport:
         profile = await get_company_profile(number)
         report.company = _identity_from_profile(profile)
     except HTTPException:
-        # Keep fixture identity; still stamp the requested number when CH fails.
         report.company = report.company.model_copy(update={"company_number": number})
 
     return report

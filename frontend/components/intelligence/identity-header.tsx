@@ -1,49 +1,31 @@
 import type { CompanyIdentity } from "@/lib/intelligence";
-import { TagList } from "@/components/intelligence/shared";
+import { SectionLabel, TagList } from "@/components/intelligence/shared";
 
 export function IdentityHeader({ company }: { company: CompanyIdentity }) {
   return (
-    <header className="flex flex-col gap-4">
-      <p className="text-muted-foreground text-xs tracking-wide uppercase">
-        Intelligence report
-      </p>
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-medium tracking-tight sm:text-3xl">
-          {company.company_name}
-        </h2>
-        <p className="font-mono text-sm">{company.company_number}</p>
+    <header className="motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
+      <SectionLabel>Company intelligence dossier</SectionLabel>
+      <h1 className="text-ink mt-3 font-[family-name:var(--font-display)] text-4xl leading-[1.05] tracking-tight sm:text-5xl">
+        {company.company_name}
+      </h1>
+      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <span className="text-ink font-mono">{company.company_number}</span>
+        {company.company_status && <span>· {company.company_status}</span>}
+        {company.company_type && <span>· {company.company_type}</span>}
+        {(company.locality || company.region) && (
+          <span>
+            · {[company.locality, company.region].filter(Boolean).join(", ")}
+          </span>
+        )}
       </div>
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        {company.company_status && (
-          <div>
-            <dt className="text-muted-foreground">Status</dt>
-            <dd>{company.company_status}</dd>
-          </div>
-        )}
-        {company.company_type && (
-          <div>
-            <dt className="text-muted-foreground">Type</dt>
-            <dd>{company.company_type}</dd>
-          </div>
-        )}
-        {company.date_of_creation && (
-          <div>
-            <dt className="text-muted-foreground">Created</dt>
-            <dd>{company.date_of_creation}</dd>
-          </div>
-        )}
-        {company.address_snippet && (
-          <div className="sm:col-span-2">
-            <dt className="text-muted-foreground">Address</dt>
-            <dd>{company.address_snippet}</dd>
-          </div>
-        )}
-      </dl>
+      {company.address_snippet && (
+        <p className="text-muted-foreground mt-2 max-w-prose text-sm">
+          {company.address_snippet}
+        </p>
+      )}
       {company.sic_codes && company.sic_codes.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <p className="text-muted-foreground text-xs tracking-wide uppercase">
-            SIC codes
-          </p>
+        <div className="mt-5 flex flex-col gap-2">
+          <SectionLabel>SIC codes</SectionLabel>
           <TagList items={company.sic_codes} />
         </div>
       )}

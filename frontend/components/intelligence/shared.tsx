@@ -4,67 +4,45 @@ export function CitationsList({ citations }: { citations: Citation[] }) {
   if (!citations.length) return null;
 
   return (
-    <ul className="flex flex-col gap-2 text-sm">
+    <ol className="text-muted-foreground mt-6 flex flex-col gap-1.5 text-xs">
       {citations.map((c, i) => {
         const label = c.title || c.source_ref || c.url || "Source";
         return (
-          <li key={`${label}-${i}`} className="leading-snug">
+          <li key={`${label}-${i}`}>
+            <span className="tabular-nums">[{i + 1}]</span>{" "}
             {c.url ? (
               <a
                 href={c.url}
                 target="_blank"
                 rel="noreferrer"
-                className="underline underline-offset-2"
+                className="decoration-line hover:text-accent hover:decoration-accent underline underline-offset-4 transition-colors"
               >
                 {label}
               </a>
             ) : (
               <span>{label}</span>
             )}
-            {c.source_ref && (
-              <span className="text-muted-foreground"> · {c.source_ref}</span>
-            )}
             {c.snippet && (
-              <p className="text-muted-foreground mt-0.5 text-xs">{c.snippet}</p>
+              <span className="text-muted-foreground/80"> — {c.snippet}</span>
             )}
           </li>
         );
       })}
-    </ul>
+    </ol>
   );
 }
 
 export function TagList({ items }: { items: string[] }) {
   if (!items.length) return null;
   return (
-    <ul className="flex flex-wrap gap-2 text-sm">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="border-border text-muted-foreground rounded-md border px-2 py-0.5"
-        >
-          {item}
-        </li>
-      ))}
-    </ul>
+    <p className="text-ink text-sm leading-relaxed">{items.join(" · ")}</p>
   );
 }
 
-export function SectionHeading({
-  title,
-  confidence,
-}: {
-  title: string;
-  confidence?: string;
-}) {
+export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h3 className="text-lg font-medium tracking-tight">{title}</h3>
-      {confidence && (
-        <span className="text-muted-foreground text-xs uppercase tracking-wide">
-          Confidence · {confidence}
-        </span>
-      )}
-    </div>
+    <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+      {children}
+    </p>
   );
 }
