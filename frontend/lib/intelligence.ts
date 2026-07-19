@@ -93,11 +93,21 @@ export type ReportConfidence = {
   quality: ConfidenceLevel;
 };
 
+export type IntelligenceStage =
+  | "profile"
+  | "business_model"
+  | "competition"
+  | "quality"
+  | "done"
+  | "error";
+
+/** Progressive report — pillars appear as each agent finishes. */
 export type CompanyIntelligenceReport = {
-  company: CompanyIdentity;
-  business_model: BusinessModelSection;
-  competition: CompetitionSection;
-  quality: QualitySection;
-  confidence: ReportConfidence;
-  gaps: string[];
+  company?: CompanyIdentity;
+  business_model?: BusinessModelSection;
+  competition?: CompetitionSection;
+  quality?: QualitySection;
+  confidence?: ReportConfidence;
+  gaps?: string[];
+  stage?: IntelligenceStage;
 };

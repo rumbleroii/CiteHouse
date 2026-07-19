@@ -94,3 +94,22 @@ export async function fetchIntelligenceReport(
 
   return res.json();
 }
+
+export async function startIntelligenceRun(
+  companyNumber: string,
+): Promise<{ run_id: string; company_number: string }> {
+  const res = await fetch(
+    `${API_BASE}/api/intelligence/${encodeURIComponent(companyNumber)}/runs`,
+    { method: "POST", cache: "no-store" },
+  );
+
+  if (!res.ok) {
+    throw new Error(await readError(res, "Failed to start intelligence run"));
+  }
+
+  return res.json();
+}
+
+export function intelligenceStreamUrl(runId: string): string {
+  return `${API_BASE}/api/intelligence/runs/${encodeURIComponent(runId)}/stream`;
+}

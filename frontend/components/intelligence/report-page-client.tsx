@@ -5,8 +5,14 @@ import Link from "next/link";
 
 import { IntelligenceDashboard } from "@/components/intelligence/intelligence-dashboard";
 import { buttonVariants } from "@/components/ui/button";
-import { fetchIntelligenceReport } from "@/lib/api";
-import type { CompanyIntelligenceReport } from "@/lib/intelligence";
+import {
+  intelligenceStreamUrl,
+  startIntelligenceRun,
+} from "@/lib/api";
+import type {
+  CompanyIntelligenceReport,
+  IntelligenceStage,
+} from "@/lib/intelligence";
 import { cn } from "@/lib/utils";
 
 function Spinner() {
@@ -24,32 +30,102 @@ export function ReportPageClient({
   companyNumber: string;
 }) {
   const [report, setReport] = useState<CompanyIntelligenceReport | null>(null);
+  const [stage, setStage] = useState<IntelligenceStage | undefined>("profile");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setReport(null);
+    let source: EventSource | null = null;
 
-    fetchIntelligenceReport(companyNumber)
-      .then((data) => {
-        if (!cancelled) setReport(data);
-      })
-      .catch((err: unknown) => {
+    async function run() {
+      setLoading(true);
+      setError(null);
+      setReport(null);
+      setStage("profile");
+
+      try {
+        const { run_id } = await startIntelligenceRun(companyNumber);
+        if (cancelled) return;
+
+        source = new EventSource(intelligenceStreamUrl(run_id));
+
+        source.addEventListener("stage", (ev) => {
+          try {
+            const data = JSON.parse((ev as MessageEvent).data) as {
+              stage?: IntelligenceStage;
+            };
+            if (data.stage) setStage(data.stage);
+          } catch {
+            // ignore
+          }
+        });
+
+        source.addEventListener("report", (ev) => {
+          try {
+            const data = JSON.parse(
+              (ev as MessageEvent).data,
+            ) as CompanyIntelligenceReport;
+            setReport((prev) => ({ ...(prev || {}), ...data }));
+            if (data.stage) setStage(data.stage);
+            setLoading(false);
+          } catch {
+            // ignore
+          }
+        });
+
+        source.addEventListener("done", (ev) => {
+          try {
+            const data = JSON.parse(
+              (ev as MessageEvent).data,
+            ) as CompanyIntelligenceReport;
+            setReport((prev) => ({ ...(prev || {}), ...data }));
+            setStage("done");
+            setLoading(false);
+          } catch {
+            // ignore
+          }
+          source?.close();
+        });
+
+        source.addEventListener("run_error", (ev) => {
+          try {
+            const data = JSON.parse((ev as MessageEvent).data) as {
+              detail?: string;
+            };
+            if (!cancelled) {
+              setError(data.detail || "Intelligence run failed");
+              setLoading(false);
+            }
+          } catch {
+            if (!cancelled) {
+              setError("Intelligence run failed");
+              setLoading(false);
+            }
+          }
+          source?.close();
+        });
+
+        source.onerror = () => {
+          if (!cancelled && source?.readyState === EventSource.CLOSED) {
+            // stream closed — leave current report if any
+          }
+        };
+      } catch (err) {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Failed to load report",
+            err instanceof Error ? err.message : "Failed to start report",
           );
+          setLoading(false);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void run();
 
     return () => {
       cancelled = true;
+      source?.close();
     };
   }, [companyNumber]);
 
@@ -72,18 +148,18 @@ export function ReportPageClient({
         </div>
       </header>
 
-      {loading && (
+      {loading && !report && (
         <div
-          className="text-muted-foreground flex min-h-[50vh] flex-col items-center justify-center gap-3 text-sm"
+          className="text-muted-foreground flex min-h-[40vh] flex-col items-center justify-center gap-3 text-sm"
           role="status"
           aria-live="polite"
         >
           <Spinner />
-          <span>Generating intelligence report…</span>
+          <span>Starting intelligence agents…</span>
         </div>
       )}
 
-      {!loading && error && (
+      {error && (
         <div className="mx-auto flex max-w-3xl flex-col gap-4 px-5 py-16 sm:px-8">
           <p className="text-destructive text-sm">{error}</p>
           <Link href="/" className={cn(buttonVariants({ variant: "outline" }))}>
@@ -92,7 +168,9 @@ export function ReportPageClient({
         </div>
       )}
 
-      {!loading && report && <IntelligenceDashboard report={report} />}
+      {!error && (report || (!loading && stage)) && (
+        <IntelligenceDashboard report={report} stage={stage} />
+      )}
     </div>
   );
 }
