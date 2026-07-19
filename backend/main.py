@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from routers import health
+
 app = FastAPI(title="Citehouse API")
 
 app.add_middleware(
@@ -11,12 +13,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/")
-def root():
-    return {"status": "ok"}
-
-
-@app.get("/api/health")
-def health():
-    return {"status": "healthy"}
+app.include_router(health.router, prefix="/api")
