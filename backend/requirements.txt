@@ -4,3 +4,4 @@ langgraph
 langchain
 cursor-sdk
 pydantic
+httpx
