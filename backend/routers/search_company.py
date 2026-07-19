@@ -5,6 +5,7 @@ from services.search_companies import (
     search_by_company_name,
     search_by_company_number,
 )
+from services.search_peers import search_peers
 
 router = APIRouter(tags=["search"])
 
@@ -62,3 +63,27 @@ async def get_advanced_search(
 @router.get("/search/by-company-number/{company_number}")
 async def get_search_by_company_number(company_number: str):
     return await search_by_company_number(company_number)
+
+
+@router.get("/search/peers")
+async def get_search_peers(
+    company_number: str | None = Query(
+        None,
+        description="Seed company — SIC and geography derived from its profile",
+    ),
+    sic_codes: str | None = Query(
+        None,
+        description="Comma-separated SIC codes (optional if company_number is set)",
+    ),
+    location: str | None = Query(
+        None,
+        description="Optional geography override (locality / region)",
+    ),
+    size: int = Query(10, ge=1, le=50),
+):
+    return await search_peers(
+        company_number=company_number,
+        sic_codes=sic_codes,
+        location=location,
+        size=size,
+    )

@@ -42,6 +42,10 @@ class CompanyHit(BaseModel):
     date_of_creation: str | None = None
     date_of_cessation: str | None = None
     address_snippet: str | None = None
+    locality: str | None = None
+    region: str | None = None
+    country: str | None = None
+    sic_codes: list[str] | None = None
 
 
 class AgentDecision(BaseModel):
@@ -105,7 +109,7 @@ async def filter_companies(
 
 @tool
 async def get_company(company_number: str) -> str:
-    """Fetch one company by exact Companies House registration number."""
+    """Fetch one company by exact Companies House registration number (includes SIC)."""
     result = await search_by_company_number(company_number)
     return json.dumps(result)
 

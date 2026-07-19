@@ -10,6 +10,10 @@ export type CompanyLookupResponse = {
   date_of_creation?: string;
   date_of_cessation?: string;
   address_snippet?: string;
+  locality?: string;
+  region?: string;
+  country?: string;
+  sic_codes?: string[];
 };
 
 export type AgenticSearchResponse = {

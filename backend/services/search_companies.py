@@ -35,24 +35,33 @@ def _slim(item: dict) -> dict:
             detail="Companies House response missing company name or number",
         )
 
+    address = item.get("address") or item.get("registered_office_address") or {}
+    if not isinstance(address, dict):
+        address = {}
+
     snippet = item.get("address_snippet")
-    if not snippet:
-        address = item.get("address") or item.get("registered_office_address") or {}
-        if isinstance(address, dict):
-            parts = [
-                address[k]
-                for k in (
-                    "care_of",
-                    "address_line_1",
-                    "address_line_2",
-                    "locality",
-                    "region",
-                    "postal_code",
-                    "country",
-                )
-                if address.get(k)
-            ]
-            snippet = ", ".join(parts) if parts else None
+    if not snippet and address:
+        parts = [
+            address[k]
+            for k in (
+                "care_of",
+                "address_line_1",
+                "address_line_2",
+                "locality",
+                "region",
+                "postal_code",
+                "country",
+            )
+            if address.get(k)
+        ]
+        snippet = ", ".join(parts) if parts else None
+
+    sic_raw = item.get("sic_codes")
+    sic_codes = (
+        [str(code) for code in sic_raw if code]
+        if isinstance(sic_raw, list)
+        else None
+    )
 
     slim = {
         "company_number": number,
@@ -62,6 +71,10 @@ def _slim(item: dict) -> dict:
         "date_of_creation": item.get("date_of_creation"),
         "date_of_cessation": item.get("date_of_cessation"),
         "address_snippet": snippet,
+        "locality": address.get("locality"),
+        "region": address.get("region"),
+        "country": address.get("country"),
+        "sic_codes": sic_codes or None,
     }
     return {k: v for k, v in slim.items() if v}
 
@@ -99,13 +112,13 @@ async def advanced_search(filters: dict[str, Any]) -> dict:
     return _as_list(data)
 
 
-async def search_by_company_number(company_number: str) -> dict:
+async def get_company_profile(company_number: str) -> dict:
+    """Full company profile from Companies House (includes SIC codes)."""
     number = company_number.strip().upper()
-    data = await _fetch("/search/companies", {"q": number, "items_per_page": 20})
-
-    for item in data.get("items") or []:
-        if str(item.get("company_number", "")).upper() == number:
-            return _slim(item)
-
     profile = await _fetch(f"/company/{number}", not_found="Company not found")
     return _slim(profile)
+
+
+async def search_by_company_number(company_number: str) -> dict:
+    """Resolve by number via profile endpoint so SIC / address fields are present."""
+    return await get_company_profile(company_number)
