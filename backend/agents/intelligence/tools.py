@@ -1,8 +1,4 @@
-"""LangChain tools for company intelligence foundations (Phase A).
-
-Import these into a future intelligence agent — not wired into the resolve
-agent yet.
-"""
+"""LangChain tools for the intelligence agents."""
 
 from __future__ import annotations
 
@@ -51,6 +47,3 @@ async def web_search(query: str, max_results: int = 5) -> str:
     """
     result = await fetch_web_search(query, max_results=max_results)
     return json.dumps(result)
-
-
-INTELLIGENCE_TOOLS = [get_company_profile, search_peers, web_search]

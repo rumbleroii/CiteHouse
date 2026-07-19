@@ -7,7 +7,7 @@ from langgraph.prebuilt import create_react_agent
 from agents.intelligence.llm import build_model
 from agents.intelligence.prompts import BUSINESS_MODEL_PROMPT
 from schema.business_model import BusinessModelSection
-from tools.intelligence import get_company_profile
+from agents.intelligence.tools import get_company_profile
 
 _agent = None
 

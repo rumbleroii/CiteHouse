@@ -17,7 +17,6 @@ from agents.intelligence.state import (
 
 _RUNS: dict[str, dict[str, Any]] = {}
 _RUNS_DIR = Path(__file__).resolve().parent.parent / ".runs"
-_COMPANY_LATEST: dict[str, str] = {}
 
 
 def _persist(run_id: str, state: IntelligenceState) -> None:
@@ -32,19 +31,6 @@ def _persist(run_id: str, state: IntelligenceState) -> None:
 
 def get_run(run_id: str) -> dict[str, Any] | None:
     return _RUNS.get(run_id)
-
-
-def get_latest_report_for_company(company_number: str) -> dict[str, Any] | None:
-    run_id = _COMPANY_LATEST.get(company_number.strip().upper())
-    if not run_id:
-        return None
-    record = _RUNS.get(run_id)
-    if not record:
-        return None
-    state: IntelligenceState = record["state"]
-    if state.get("stage") != "done":
-        return None
-    return record.get("report")
 
 
 async def _execute_run(run_id: str, company_number: str) -> None:
@@ -107,7 +93,6 @@ def start_run(company_number: str) -> str:
         "state": initial_state(number),
         "report": None,
     }
-    _COMPANY_LATEST[number] = run_id
     asyncio.create_task(_execute_run(run_id, number))
     return run_id
 

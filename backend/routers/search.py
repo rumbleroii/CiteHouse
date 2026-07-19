@@ -2,7 +2,8 @@ from pydantic import BaseModel, Field
 
 from fastapi import APIRouter
 
-from services.agentic_search import run_agentic_search
+from agents.company_search import run_agentic_search
+from services.search_companies import search_by_company_number
 
 router = APIRouter(tags=["search"])
 
@@ -18,6 +19,11 @@ class AgenticSearchRequest(BaseModel):
     message: str = Field(..., min_length=1)
     prior_query: str | None = None
     candidates: list[CandidateContext] | None = None
+
+
+@router.get("/search/by-company-number/{company_number}")
+async def get_search_by_company_number(company_number: str):
+    return await search_by_company_number(company_number)
 
 
 @router.post("/search/agentic")

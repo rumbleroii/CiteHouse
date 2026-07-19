@@ -7,7 +7,7 @@ from langgraph.prebuilt import create_react_agent
 from agents.intelligence.llm import build_model
 from agents.intelligence.prompts import COMPETITION_PROMPT
 from schema.competition import CompetitionSection
-from tools.intelligence import get_company_profile, search_peers, web_search
+from agents.intelligence.tools import get_company_profile, search_peers, web_search
 
 _agent = None
 

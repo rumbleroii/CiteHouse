@@ -4,7 +4,6 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from services.intelligence_run import (
-    get_latest_report_for_company,
     get_run,
     start_run,
     stream_run_events,
@@ -62,15 +61,3 @@ async def get_intelligence_run(run_id: str):
         "error": state.get("error"),
         "report": record.get("report") or state,
     }
-
-
-@router.get("/intelligence/{company_number}")
-async def get_intelligence_report(company_number: str):
-    """Latest completed report for a company, if any."""
-    report = get_latest_report_for_company(company_number)
-    if not report:
-        raise HTTPException(
-            status_code=404,
-            detail="No completed intelligence report for this company yet",
-        )
-    return report

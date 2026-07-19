@@ -7,7 +7,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from agents.company_search import AgentDecision, CompanyHit, get_agent
+from agents.company_search.agent import AgentDecision, CompanyHit, get_agent
 from services.search_companies import search_by_company_number
 
 
