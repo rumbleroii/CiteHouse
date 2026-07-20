@@ -18,7 +18,7 @@ export function ConfidenceWithTooltip({
   tooltipId?: string;
 }) {
   return (
-    <span className="group relative inline-block cursor-help">
+    <div className="group relative inline-block cursor-help">
       <span
         className="decoration-muted-foreground/50 underline decoration-dotted underline-offset-4"
         tabIndex={0}
@@ -26,7 +26,7 @@ export function ConfidenceWithTooltip({
       >
         {formatConfidence(level)}
       </span>
-      <span
+      <div
         id={tooltipId}
         role="tooltip"
         className="bg-ink text-background pointer-events-none absolute top-full left-0 z-20 mt-2 w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-md px-3 py-2.5 text-[0.7rem] leading-snug tracking-normal normal-case opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
@@ -44,8 +44,8 @@ export function ConfidenceWithTooltip({
         <p className="border-background/20 mt-2.5 border-t pt-2 leading-relaxed opacity-90">
           {content.reasoning}
         </p>
-      </span>
-    </span>
+      </div>
+    </div>
   );
 }
 
@@ -108,8 +108,8 @@ export function TagList({ items }: { items: string[] }) {
 
 export function SectionLabel({ children }: { children: ReactNode }) {
   return (
-    <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+    <div className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
       {children}
-    </p>
+    </div>
   );
 }

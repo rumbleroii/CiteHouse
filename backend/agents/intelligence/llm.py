@@ -18,4 +18,9 @@ def build_model() -> ChatOpenAI:
     )
     # Chat Completions + function tools (LangGraph ReAct) require reasoning_effort=none
     # for gpt-5.6-terra / luna. Medium/higher effort needs the Responses API instead.
-    return ChatOpenAI(model=model_name, reasoning_effort="none")
+    return ChatOpenAI(
+        model=model_name,
+        reasoning_effort="none",
+        timeout=90,
+        max_retries=2,
+    )

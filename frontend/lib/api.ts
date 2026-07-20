@@ -17,7 +17,7 @@ export type CompanyLookupResponse = {
 };
 
 export type AgenticSearchResponse = {
-  status: "found" | "needs_clarification" | "not_found";
+  status: "found" | "needs_clarification" | "not_found" | "error";
   message: string;
   company: CompanyLookupResponse | null;
   candidates: CompanyLookupResponse[];

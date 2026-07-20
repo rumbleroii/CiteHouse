@@ -69,12 +69,12 @@ export function qualityConfidenceTooltip(
 
   return {
     criteria: [
-      { label: "Attributable Trustpilot company profile", met: trustpilot },
+      { label: "Trustpilot /review/ page names company", met: trustpilot },
       { label: "Trade-press URL names company", met: tradePress },
       { label: "Profile/address corroborated", met: profileVerify },
     ],
     reasoning: all
-      ? "Medium: Attributable Trustpilot profile, trade press, and profile detail all matched."
-      : "Low: Need attributable Trustpilot and trade press first; profile/address only counts when both of those pass. Unrelated brand/platform hits do not count.",
+      ? "Medium: Trustpilot review page, trade press, and profile/address corroboration all matched."
+      : "Low: Need a Trustpilot /review/ page naming the company and a trade-press URL first; profile/address only counts when both of those pass. Generic Trustpilot category/platform hits do not count.",
   };
 }

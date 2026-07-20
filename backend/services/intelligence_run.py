@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from pathlib import Path
 from typing import Any, AsyncIterator
@@ -14,6 +15,8 @@ from agents.intelligence.state import (
     initial_state,
     state_to_partial_report,
 )
+
+logger = logging.getLogger("citehouse.intelligence_run")
 
 _RUNS: dict[str, dict[str, Any]] = {}
 _RUNS_DIR = Path(__file__).resolve().parent.parent / ".runs"
@@ -39,18 +42,30 @@ async def _execute_run(run_id: str, company_number: str) -> None:
     graph = get_intelligence_graph()
     state = initial_state(company_number)
     _persist(run_id, state)
+    logger.info("run start run_id=%s company_number=%s", run_id, company_number)
     await queue.put({"event": "stage", "data": {"stage": state["stage"]}})
 
     try:
         async for update in graph.astream(state, stream_mode="updates"):
-            for _node, partial in update.items():
+            for node, partial in update.items():
                 if not isinstance(partial, dict):
                     continue
                 state = {**state, **partial}  # type: ignore[misc]
                 _persist(run_id, state)
                 stage = state.get("stage")
+                logger.info(
+                    "run update run_id=%s node=%s stage=%s",
+                    run_id,
+                    node,
+                    stage,
+                )
                 await queue.put({"event": "stage", "data": {"stage": stage}})
                 if state.get("error"):
+                    logger.error(
+                        "run error run_id=%s detail=%s",
+                        run_id,
+                        state["error"],
+                    )
                     await queue.put(
                         {"event": "run_error", "data": {"detail": state["error"]}},
                     )
@@ -59,6 +74,7 @@ async def _execute_run(run_id: str, company_number: str) -> None:
                 report = state_to_partial_report(state)
                 await queue.put({"event": "report", "data": report})
                 if stage == "done":
+                    logger.info("run done run_id=%s company_number=%s", run_id, company_number)
                     await queue.put({"event": "done", "data": report})
                     await queue.put(None)
                     return
@@ -68,6 +84,7 @@ async def _execute_run(run_id: str, company_number: str) -> None:
             report = state_to_partial_report(state)
             await queue.put({"event": "done", "data": report})
         elif state.get("stage") != "error":
+            logger.error("run ended before completion run_id=%s", run_id)
             await queue.put(
                 {
                     "event": "run_error",
@@ -75,6 +92,7 @@ async def _execute_run(run_id: str, company_number: str) -> None:
                 },
             )
     except Exception as exc:  # noqa: BLE001
+        logger.exception("run crashed run_id=%s", run_id)
         state = {**state, "stage": "error", "error": str(exc)}  # type: ignore[misc]
         _persist(run_id, state)
         await queue.put({"event": "run_error", "data": {"detail": str(exc)}})
@@ -92,6 +110,7 @@ def start_run(company_number: str) -> str:
         "state": initial_state(number),
         "report": None,
     }
+    logger.info("run queued run_id=%s company_number=%s", run_id, number)
     asyncio.create_task(_execute_run(run_id, number))
     return run_id
 

@@ -192,13 +192,13 @@ def _is_attributable_trustpilot(
     item: dict[str, Any],
     *,
     name_needles: list[str],
-    profile_needles: list[str],
 ) -> bool:
-    """Hard fail unless this looks like *this* company's Trustpilot review profile.
+    """True for a Trustpilot company review profile that names this company.
 
-    Requires trustpilot.com/review/... plus the company name and a CH identity
-    token (address/locality/number) on the same hit — rejects platform pages
-    and unrelated businesses that merely share a brand token (e.g. Google Ads).
+    Requires trustpilot.com/review/... plus the company name in the hit.
+    Address/locality corroboration is a separate profile_verify tick — Trustpilot
+    snippets almost never include the Companies House registered-office string,
+    so requiring it here false-negatives real review pages.
     """
     url = str(item.get("url") or "").strip()
     if not _host_is_domain(_url_host(url), _TRUSTPILOT_DOMAINS):
@@ -206,12 +206,10 @@ def _is_attributable_trustpilot(
     path = urlsplit(url).path.lower()
     if "/review/" not in path:
         return False
-    if not profile_needles:
+    if not name_needles:
         return False
     blob = _hit_blob(item)
-    if not any(n in blob for n in name_needles):
-        return False
-    return any(p in blob for p in profile_needles)
+    return any(n in blob for n in name_needles)
 
 
 def quality_web_evidence(
@@ -244,7 +242,6 @@ def quality_web_evidence(
             if _is_attributable_trustpilot(
                 item,
                 name_needles=name_needles,
-                profile_needles=profile_needles,
             ):
                 has_trustpilot = True
 

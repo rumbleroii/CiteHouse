@@ -42,8 +42,7 @@ class QualityConfidenceFactors(BaseModel):
 
     trustpilot: bool = Field(
         description=(
-            "Attributable trustpilot.com/review/ page for this company "
-            "(name + address/locality/number on the same hit)"
+            "Attributable trustpilot.com/review/ page that names this company"
         ),
     )
     trade_press: bool = Field(

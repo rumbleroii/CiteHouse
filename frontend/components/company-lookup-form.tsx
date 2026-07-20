@@ -141,11 +141,14 @@ function CompanyPanel({
   );
 }
 
+type MessageKind = "match" | "no_match" | "unavailable" | "clarify" | null;
+
 export function CompanyLookupForm() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
+  const [messageKind, setMessageKind] = useState<MessageKind>(null);
   const [priorQuery, setPriorQuery] = useState<string | null>(null);
   const [awaitingFollowUp, setAwaitingFollowUp] = useState(false);
   const [company, setCompany] = useState<CompanyLookupResponse | null>(null);
@@ -155,6 +158,7 @@ export function CompanyLookupForm() {
     setCompany(null);
     setCandidates([]);
     setAgentMessage(null);
+    setMessageKind(null);
     setAwaitingFollowUp(false);
     setPriorQuery(null);
   }
@@ -163,6 +167,7 @@ export function CompanyLookupForm() {
     setCompany(item);
     setCandidates([]);
     setAgentMessage(null);
+    setMessageKind("match");
     setAwaitingFollowUp(false);
     setPriorQuery(null);
     setQuery("");
@@ -189,6 +194,7 @@ export function CompanyLookupForm() {
           setQuery("");
         } catch (err) {
           setCompany(null);
+          setMessageKind("no_match");
           setAgentMessage(
             err instanceof Error
               ? err.message
@@ -213,17 +219,40 @@ export function CompanyLookupForm() {
         candidates: isFollowUp ? candidates : undefined,
       });
 
+      if (data.status === "error") {
+        resetSession();
+        setMessageKind("unavailable");
+        setAgentMessage(
+          data.message ||
+            "Search couldn’t be completed. Please try again.",
+        );
+        setQuery("");
+        return;
+      }
+
       if (data.status === "not_found") {
         resetSession();
+        setMessageKind("no_match");
         setAgentMessage(data.message || "No matching company found.");
         setQuery("");
         return;
       }
 
       if (data.status === "found") {
+        if (!data.company) {
+          resetSession();
+          setMessageKind("unavailable");
+          setAgentMessage(
+            data.message ||
+              "Search couldn’t load the matched company. Please try again.",
+          );
+          setQuery("");
+          return;
+        }
         setAwaitingFollowUp(false);
         setPriorQuery(null);
         setCandidates([]);
+        setMessageKind("match");
         setAgentMessage(data.message);
         setCompany(data.company);
         setQuery("");
@@ -234,10 +263,12 @@ export function CompanyLookupForm() {
       setAwaitingFollowUp(true);
       setCompany(null);
       setCandidates(data.candidates);
+      setMessageKind("clarify");
       setAgentMessage(data.message);
       setQuery("");
     } catch (err) {
       setCompany(null);
+      setMessageKind("unavailable");
       setAgentMessage(
         err instanceof Error
           ? err.message
@@ -310,9 +341,13 @@ export function CompanyLookupForm() {
             className="border-border border-l-2 pl-4"
             aria-live="polite"
           >
-            {(company || !(awaitingFollowUp || candidates.length > 0)) && (
+            {messageKind && messageKind !== "clarify" && (
               <p className="text-muted-foreground mb-1.5 text-xs tracking-[0.14em] uppercase">
-                {company ? "Match" : "No match"}
+                {messageKind === "match"
+                  ? "Match"
+                  : messageKind === "unavailable"
+                    ? "Search unavailable"
+                    : "No match"}
               </p>
             )}
             <p className="text-[0.9375rem] leading-relaxed text-pretty">

@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import httpx
 from fastapi import HTTPException
 
 from utils import search_companies as ch
@@ -13,17 +14,40 @@ async def _fetch(path: str, params: dict[str, Any] | None = None, *, not_found: 
     if not ch.api_key():
         raise HTTPException(status_code=500, detail="COMPANIES_HOUSE_API_KEY is not configured")
 
-    response = await ch.get(path, params)
+    try:
+        response = await ch.get(path, params)
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Companies House timed out. Please try again.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Companies House is unavailable. Please try again.",
+        ) from exc
+
     if response.status_code == 401:
         raise HTTPException(status_code=502, detail="Companies House API rejected the API key")
     if response.status_code == 404:
         raise HTTPException(status_code=404, detail=not_found)
+    if response.status_code == 429:
+        raise HTTPException(
+            status_code=503,
+            detail="Companies House rate limit exceeded. Please try again shortly.",
+        )
     if response.status_code >= 400:
         raise HTTPException(
             status_code=502,
             detail=f"Companies House request failed for {path} ({response.status_code})",
         )
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Companies House returned an invalid response",
+        ) from exc
 
 
 def _slim(item: dict) -> dict:

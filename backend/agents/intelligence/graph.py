@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from langgraph.graph import END, START, StateGraph
@@ -33,6 +34,8 @@ from schema.identity import CompanyIdentity
 from schema.quality import CustomerRating, QualitySection, TradePress
 from services.search_companies import get_company_profile
 from services.search_peers import search_peers
+
+logger = logging.getLogger("citehouse.agents.intelligence")
 
 
 def _sanitize_quality_section(
@@ -78,12 +81,14 @@ def _require_structured(result: dict[str, Any], model_cls: type):
 
 async def load_profile(state: IntelligenceState) -> dict[str, Any]:
     number = state["company_number"]
+    logger.info("pillar=load_profile start company_number=%s", number)
     try:
         profile = await get_company_profile(number)
         company = CompanyIdentity.model_validate(profile).model_dump(exclude_none=True)
         gaps = list(state.get("gaps") or [])
         if not company.get("sic_codes"):
             gaps = merge_gaps(gaps, ["No SIC codes on Companies House profile"])
+        logger.info("pillar=load_profile done company_number=%s", number)
         return {
             "company": company,
             "stage": "business_model",
@@ -91,6 +96,7 @@ async def load_profile(state: IntelligenceState) -> dict[str, Any]:
             "error": None,
         }
     except Exception as exc:  # noqa: BLE001
+        logger.exception("pillar=load_profile failed company_number=%s", number)
         return {
             "stage": "error",
             "error": f"Failed to load company profile: {exc}",
@@ -102,6 +108,7 @@ async def business_model_node(state: IntelligenceState) -> dict[str, Any]:
         return {}
     company = state.get("company") or {}
     number = state["company_number"]
+    logger.info("pillar=business_model start company_number=%s", number)
     prompt = (
         f"Analyse business model for company_number={number}.\n"
         f"Known profile JSON:\n{json.dumps(company)}\n"
@@ -132,6 +139,11 @@ async def business_model_node(state: IntelligenceState) -> dict[str, Any]:
             )
         gaps = merge_gaps(gaps, citation_gaps)
         conf = update_confidence(state.get("confidence"), business_model=level)
+        logger.info(
+            "pillar=business_model done company_number=%s confidence=%s",
+            number,
+            level,
+        )
         return {
             "business_model": dumps_section(section),
             "confidence": conf,
@@ -140,6 +152,7 @@ async def business_model_node(state: IntelligenceState) -> dict[str, Any]:
             "error": None,
         }
     except Exception as exc:  # noqa: BLE001
+        logger.exception("pillar=business_model failed company_number=%s", number)
         return {
             "stage": "error",
             "error": f"Business model agent failed: {exc}",
@@ -152,6 +165,7 @@ async def competition_node(state: IntelligenceState) -> dict[str, Any]:
     company = state.get("company") or {}
     bm = state.get("business_model") or {}
     number = state["company_number"]
+    logger.info("pillar=competition start company_number=%s", number)
     prompt = (
         f"Assess competition for company_number={number}.\n"
         f"Profile:\n{json.dumps(company)}\n"
@@ -217,10 +231,21 @@ async def competition_node(state: IntelligenceState) -> dict[str, Any]:
             }
         )
         gaps = list(state.get("gaps") or [])
+        if peers.get("empty_reason") == "no_sic_codes":
+            gaps = merge_gaps(
+                gaps,
+                ["Company has no SIC codes; peer set unavailable"],
+            )
         if level == "low":
             gaps = merge_gaps(gaps, ["Competition confidence is low (no peer set)"])
         gaps = merge_gaps(gaps, citation_gaps)
         conf = update_confidence(state.get("confidence"), competition=level)
+        logger.info(
+            "pillar=competition done company_number=%s peers=%s confidence=%s",
+            number,
+            peer_count,
+            level,
+        )
         return {
             "competition": dumps_section(section),
             "confidence": conf,
@@ -229,6 +254,7 @@ async def competition_node(state: IntelligenceState) -> dict[str, Any]:
             "error": None,
         }
     except Exception as exc:  # noqa: BLE001
+        logger.exception("pillar=competition failed company_number=%s", number)
         return {
             "stage": "error",
             "error": f"Competition agent failed: {exc}",
@@ -241,6 +267,7 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
     company = state.get("company") or {}
     competition = state.get("competition") or {}
     number = state["company_number"]
+    logger.info("pillar=quality start company_number=%s", number)
     prompt = (
         f"Assess reputation/quality for company_number={number}.\n"
         f"Profile:\n{json.dumps(company)}\n"
@@ -288,7 +315,7 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
                 gaps,
                 [
                     "No attributable Trustpilot company profile "
-                    "(need trustpilot.com/review/... tied to this name and address)"
+                    "(need trustpilot.com/review/... that names this company)"
                 ],
             )
         if not evidence["trustpilot"] and not evidence["trade_press"]:
@@ -309,6 +336,11 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
             )
         gaps = merge_gaps(gaps, citation_gaps)
         conf = update_confidence(state.get("confidence"), quality=level)
+        logger.info(
+            "pillar=quality done company_number=%s confidence=%s",
+            number,
+            level,
+        )
         return {
             "quality": dumps_section(section),
             "confidence": conf,
@@ -317,6 +349,7 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
             "error": None,
         }
     except Exception as exc:  # noqa: BLE001
+        logger.exception("pillar=quality failed company_number=%s", number)
         return {
             "stage": "error",
             "error": f"Reputation agent failed: {exc}",

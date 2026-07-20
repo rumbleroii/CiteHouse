@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import httpx
 from fastapi import HTTPException
 
 from utils import web_search as tavily
@@ -18,12 +19,29 @@ async def web_search(query: str, *, max_results: int = DEFAULT_MAX_RESULTS) -> d
         raise HTTPException(status_code=500, detail="TAVILY_API_KEY is not configured")
 
     limit = max(1, min(max_results, 20))
-    raw = await tavily.search(text, max_results=limit)
+    try:
+        raw = await tavily.search(text, max_results=limit)
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Web search timed out. Please try again.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Web search is unavailable. Please try again.",
+        ) from exc
+
     status = raw["status_code"]
     body = raw.get("body") or {}
 
     if status == 401:
         raise HTTPException(status_code=502, detail="Tavily rejected the API key")
+    if status == 429:
+        raise HTTPException(
+            status_code=503,
+            detail="Web search rate limit exceeded. Please try again shortly.",
+        )
     if status >= 400:
         detail = body.get("detail") or body.get("error") or f"Web search failed ({status})"
         if isinstance(detail, dict):

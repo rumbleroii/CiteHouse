@@ -37,10 +37,17 @@ async def search_peers(
             profile_codes = []
         if not sic_codes:
             if not profile_codes:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Company has no SIC codes; cannot search peers",
-                )
+                # Degrade: no SIC means no peer arena — caller continues with empty set.
+                return {
+                    "arena": {
+                        "sic_codes": [],
+                        "geography": geography or _geography_from_profile(profile),
+                    },
+                    "seed_company_number": exclude_number,
+                    "total_results": 0,
+                    "items": [],
+                    "empty_reason": "no_sic_codes",
+                }
             arena_codes = [str(c) for c in profile_codes]
             sic_codes = ",".join(arena_codes)
         if not geography:

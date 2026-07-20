@@ -58,10 +58,10 @@ Also run:
 3. "{company_name}" "{locality or address fragment}" (identity check)
 
 Rules:
-- Trustpilot hard pass: only use a result if it is clearly *this* registered company's
-  review profile (trustpilot.com/review/... tied to this legal name / address). If hits are
-  unrelated businesses, a parent brand, or a product/platform page (e.g. Google Ads), treat
-  as NO Trustpilot evidence — leave customer_rating null and do not list Trustpilot.
+- Trustpilot hard pass: only use a result if it is clearly *this* company's review profile
+  (trustpilot.com/review/... that names this company). If hits are unrelated businesses,
+  a parent brand, or a product/platform page (e.g. Google Ads), treat as NO Trustpilot
+  evidence — leave customer_rating null and do not list Trustpilot.
 - customer_rating: only set score/scale/n_reviews when numbers appear on an attributable
   Trustpilot (or review) snippet; else null.
 - theme_sentiment: themes paraphrased from snippets with evidence text; polarity honest.

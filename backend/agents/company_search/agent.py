@@ -188,7 +188,12 @@ def get_agent():
     model_name = os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna"
     # Luna rejects function tools on chat completions unless reasoning is off.
     # Agentic company search stays on Luna; intelligence uses OPENAI_INTELLIGENCE_MODEL.
-    model = ChatOpenAI(model=model_name, reasoning_effort="none")
+    model = ChatOpenAI(
+        model=model_name,
+        reasoning_effort="none",
+        timeout=60,
+        max_retries=2,
+    )
     _agent = create_react_agent(
         model,
         tools=[search_companies, filter_companies, get_company],

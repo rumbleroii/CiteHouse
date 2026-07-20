@@ -4,4 +4,5 @@ langgraph
 langchain-openai
 pydantic
 httpx
+tenacity
 python-dotenv
