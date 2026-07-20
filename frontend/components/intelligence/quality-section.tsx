@@ -8,8 +8,8 @@ import {
 } from "@/components/intelligence/shared";
 
 const polarityClass: Record<string, string> = {
-  positive: "text-accent",
-  negative: "text-ink",
+  positive: "text-green-700",
+  negative: "text-red-700",
   neutral: "text-muted-foreground",
   mixed: "text-muted-foreground",
 };
@@ -21,7 +21,7 @@ export function QualitySectionView({ section }: { section: QualitySection }) {
   );
 
   return (
-    <section className="border-line mt-10 border-t pt-10 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
+    <section className="border-line mt-12 border-t pt-12 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
       <SectionLabel>
         Reputation &amp; quality ·{" "}
         <ConfidenceWithTooltip

@@ -10,9 +10,15 @@ import { SectionLabel } from "@/components/intelligence/shared";
 
 function PillarPending({ label }: { label: string }) {
   return (
-    <section className="border-line mt-10 border-t pt-10">
+    <section className="border-line mt-12 border-t pt-12">
       <SectionLabel>{label}</SectionLabel>
-      <p className="text-muted-foreground mt-4 text-sm">Analysing…</p>
+      <p
+        className="text-muted-foreground mt-4 text-sm motion-reduce:animate-none animate-[dossier-pulse_1.6s_ease-in-out_infinite]"
+        role="status"
+      >
+        <span className="bg-accent mr-2 inline-block size-1.5 rounded-full align-middle" />
+        Analysing…
+      </p>
     </section>
   );
 }

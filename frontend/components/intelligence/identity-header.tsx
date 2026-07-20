@@ -57,7 +57,9 @@ export function IdentityHeader({ company }: { company: CompanyIdentity }) {
 
         {company.company_status && (
           <ProfileField label="Status">
-            {formatStatus(company.company_status)}
+            <span className="bg-accent-weak text-accent inline-flex rounded-md px-2 py-0.5 text-xs font-medium">
+              {formatStatus(company.company_status)}
+            </span>
           </ProfileField>
         )}
 

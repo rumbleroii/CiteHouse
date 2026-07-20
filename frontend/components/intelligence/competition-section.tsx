@@ -19,7 +19,7 @@ export function CompetitionSectionView({
   );
 
   return (
-    <section className="border-line mt-10 border-t pt-10 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
+    <section className="border-line mt-12 border-t pt-12 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
       <SectionLabel>
         Competition ·{" "}
         <ConfidenceWithTooltip

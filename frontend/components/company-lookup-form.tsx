@@ -18,9 +18,17 @@ import { cn } from "@/lib/utils";
 function Spinner({ className = "" }: { className?: string }) {
   return (
     <span
-      className={`border-muted-foreground/30 border-t-foreground inline-block size-4 animate-spin rounded-full border-2 ${className}`}
+      className={`border-muted-foreground/30 border-t-accent inline-block size-4 animate-spin rounded-full border-2 ${className}`}
       aria-hidden
     />
+  );
+}
+
+function StatusChip({ status }: { status: string }) {
+  return (
+    <span className="bg-accent-weak text-accent inline-flex rounded-md px-2 py-0.5 text-xs font-medium capitalize">
+      {status}
+    </span>
   );
 }
 
@@ -38,10 +46,11 @@ function CompanyPanel({
   if (loading) {
     return (
       <div
-        className="text-muted-foreground flex min-h-48 items-center justify-center text-sm"
+        className="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm"
         role="status"
         aria-live="polite"
       >
+        <Spinner />
         Searching…
       </div>
     );
@@ -49,7 +58,7 @@ function CompanyPanel({
 
   if (company) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="motion-reduce:animate-none flex flex-col gap-6 animate-[dossier-rise_0.45s_ease-out_both]">
         <div className="flex flex-col gap-4">
           <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
             Matched company
@@ -67,7 +76,9 @@ function CompanyPanel({
             {company.company_status && (
               <div>
                 <dt className="text-muted-foreground">Status</dt>
-                <dd className="capitalize">{company.company_status}</dd>
+                <dd className="mt-1">
+                  <StatusChip status={company.company_status} />
+                </dd>
               </div>
             )}
             {company.company_type && (
@@ -109,7 +120,7 @@ function CompanyPanel({
 
   if (candidates.length > 0) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="motion-reduce:animate-none flex flex-col gap-4 animate-[dossier-rise_0.45s_ease-out_both]">
         <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
           Suggestions
         </p>
@@ -119,7 +130,7 @@ function CompanyPanel({
               <button
                 type="button"
                 onClick={() => onSelectCandidate(item)}
-                className="hover:bg-muted/60 focus-visible:ring-ring w-full rounded-md px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                className="hover:bg-accent-weak/60 focus-visible:ring-ring w-full rounded-md px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
               >
                 <span className="font-medium">{item.company_name}</span>
                 <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
@@ -141,14 +152,11 @@ function CompanyPanel({
   );
 }
 
-type MessageKind = "match" | "no_match" | "unavailable" | "clarify" | null;
-
 export function CompanyLookupForm() {
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
-  const [messageKind, setMessageKind] = useState<MessageKind>(null);
   const [priorQuery, setPriorQuery] = useState<string | null>(null);
   const [awaitingFollowUp, setAwaitingFollowUp] = useState(false);
   const [company, setCompany] = useState<CompanyLookupResponse | null>(null);
@@ -158,7 +166,6 @@ export function CompanyLookupForm() {
     setCompany(null);
     setCandidates([]);
     setAgentMessage(null);
-    setMessageKind(null);
     setAwaitingFollowUp(false);
     setPriorQuery(null);
   }
@@ -167,7 +174,6 @@ export function CompanyLookupForm() {
     setCompany(item);
     setCandidates([]);
     setAgentMessage(null);
-    setMessageKind("match");
     setAwaitingFollowUp(false);
     setPriorQuery(null);
     setQuery("");
@@ -194,7 +200,6 @@ export function CompanyLookupForm() {
           setQuery("");
         } catch (err) {
           setCompany(null);
-          setMessageKind("no_match");
           setAgentMessage(
             err instanceof Error
               ? err.message
@@ -219,40 +224,17 @@ export function CompanyLookupForm() {
         candidates: isFollowUp ? candidates : undefined,
       });
 
-      if (data.status === "error") {
-        resetSession();
-        setMessageKind("unavailable");
-        setAgentMessage(
-          data.message ||
-            "Search couldn’t be completed. Please try again.",
-        );
-        setQuery("");
-        return;
-      }
-
       if (data.status === "not_found") {
         resetSession();
-        setMessageKind("no_match");
         setAgentMessage(data.message || "No matching company found.");
         setQuery("");
         return;
       }
 
       if (data.status === "found") {
-        if (!data.company) {
-          resetSession();
-          setMessageKind("unavailable");
-          setAgentMessage(
-            data.message ||
-              "Search couldn’t load the matched company. Please try again.",
-          );
-          setQuery("");
-          return;
-        }
         setAwaitingFollowUp(false);
         setPriorQuery(null);
         setCandidates([]);
-        setMessageKind("match");
         setAgentMessage(data.message);
         setCompany(data.company);
         setQuery("");
@@ -263,12 +245,10 @@ export function CompanyLookupForm() {
       setAwaitingFollowUp(true);
       setCompany(null);
       setCandidates(data.candidates);
-      setMessageKind("clarify");
       setAgentMessage(data.message);
       setQuery("");
     } catch (err) {
       setCompany(null);
-      setMessageKind("unavailable");
       setAgentMessage(
         err instanceof Error
           ? err.message
@@ -283,12 +263,13 @@ export function CompanyLookupForm() {
   return (
     <div className="grid w-full max-w-5xl grid-cols-1 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
       <section className="flex flex-col justify-center gap-8 px-2 py-6 md:px-8 md:py-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+        <div className="flex flex-col gap-3">
+          <h1 className="brand-mark font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight sm:text-5xl">
             Citehouse
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Identify a UK registered company by legal name or Companies House number
+          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">
+            Identify a UK registered company by legal name or Companies House
+            number
           </p>
         </div>
 
@@ -338,16 +319,12 @@ export function CompanyLookupForm() {
 
         {!loading && agentMessage && (
           <aside
-            className="border-border border-l-2 pl-4"
+            className="border-accent border-l-2 pl-4"
             aria-live="polite"
           >
-            {messageKind && messageKind !== "clarify" && (
+            {(company || !(awaitingFollowUp || candidates.length > 0)) && (
               <p className="text-muted-foreground mb-1.5 text-xs tracking-[0.14em] uppercase">
-                {messageKind === "match"
-                  ? "Match"
-                  : messageKind === "unavailable"
-                    ? "Search unavailable"
-                    : "No match"}
+                {company ? "Match" : "No match"}
               </p>
             )}
             <p className="text-[0.9375rem] leading-relaxed text-pretty">
@@ -358,7 +335,7 @@ export function CompanyLookupForm() {
       </section>
 
       <div
-        className="border-border my-2 border-t md:mx-0 md:my-0 md:h-auto md:w-px md:self-stretch md:border-t-0 md:border-l"
+        className="border-accent/25 my-2 border-t md:mx-0 md:my-0 md:h-auto md:w-px md:self-stretch md:border-t-0 md:border-l"
         aria-hidden
       />
 
