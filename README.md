@@ -2,6 +2,8 @@
 
 Next.js + shadcn/ui frontend, FastAPI backend.
 
+**System design:** see [ARCHITECTURE.md](./ARCHITECTURE.md) for overall architecture, LLM usage, grounding, and uncertainty handling.
+
 ## Setup
 
 ### Frontend

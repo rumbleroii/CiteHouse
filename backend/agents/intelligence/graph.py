@@ -30,9 +30,41 @@ from agents.intelligence.state import (
 from schema.business_model import BusinessModelSection
 from schema.competition import CompetitionArena, CompetitionSection, PeerCompany
 from schema.identity import CompanyIdentity
-from schema.quality import QualitySection
+from schema.quality import CustomerRating, QualitySection, TradePress
 from services.search_companies import get_company_profile
 from services.search_peers import search_peers
+
+
+def _sanitize_quality_section(
+    section: QualitySection,
+    *,
+    has_trustpilot: bool,
+    has_trade_press: bool,
+) -> QualitySection:
+    """Drop invented Trustpilot/trade-press fields when URL evidence is missing."""
+    updates: dict[str, Any] = {}
+
+    if not has_trade_press:
+        updates["trade_press"] = TradePress(tone="neutral", notables=[])
+
+    rating = section.customer_rating
+    if rating is not None:
+        platforms = [
+            p
+            for p in rating.platforms
+            if has_trustpilot or "trustpilot" not in p.lower()
+        ]
+        if not has_trustpilot and not platforms and rating.score is None:
+            updates["customer_rating"] = None
+        elif platforms != rating.platforms:
+            updates["customer_rating"] = CustomerRating(
+                score=rating.score,
+                scale=rating.scale,
+                n_reviews=rating.n_reviews,
+                platforms=platforms,
+            )
+
+    return section.model_copy(update=updates) if updates else section
 
 
 def _require_structured(result: dict[str, Any], model_cls: type):
@@ -213,8 +245,8 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
         f"Assess reputation/quality for company_number={number}.\n"
         f"Profile:\n{json.dumps(company)}\n"
         f"Competition arena (context):\n{json.dumps((competition or {}).get('arena'))}\n"
-        "Use web_search with Trustpilot, trade-press, and at least one query that includes "
-        "the company name plus address or locality to confirm identity. Return QualitySection."
+        "Mandatory: web_search site:trustpilot.com and a trade/news press query for this "
+        "company, plus at least one query with name + address/locality. Return QualitySection."
     )
     try:
         agent = get_reputation_agent()
@@ -233,6 +265,11 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
             has_trade_press=evidence["trade_press"],
             has_profile_verify=evidence["profile_verify"],
         )
+        section = _sanitize_quality_section(
+            section,
+            has_trustpilot=evidence["trustpilot"],
+            has_trade_press=evidence["trade_press"],
+        )
         section = section.model_copy(
             update={
                 "confidence": level,
@@ -246,12 +283,28 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
         gaps = list(state.get("gaps") or [])
         if section.customer_rating is None:
             gaps = merge_gaps(gaps, ["No numeric customer rating found in web snippets"])
-        if level == "low":
+        if not evidence["trustpilot"]:
             gaps = merge_gaps(
                 gaps,
                 [
-                    "Quality confidence is low (need Trustpilot + trade press "
-                    "naming the company, and one profile/address corroboration)"
+                    "No attributable Trustpilot company profile "
+                    "(need trustpilot.com/review/... tied to this name and address)"
+                ],
+            )
+        if not evidence["trustpilot"] and not evidence["trade_press"]:
+            gaps = merge_gaps(
+                gaps,
+                [
+                    "Neither Trustpilot.com nor a recognised trade-press URL "
+                    "named this company in web search"
+                ],
+            )
+        elif level == "low":
+            gaps = merge_gaps(
+                gaps,
+                [
+                    "Quality confidence is low (need attributable Trustpilot + a "
+                    "trade-press domain naming the company, and profile corroboration)"
                 ],
             )
         gaps = merge_gaps(gaps, citation_gaps)

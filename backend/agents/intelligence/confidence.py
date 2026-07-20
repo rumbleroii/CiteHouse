@@ -39,7 +39,10 @@ def quality_confidence(
     has_trade_press: bool,
     has_profile_verify: bool,
 ) -> ConfidenceLevel:
-    """Medium when Trustpilot + trade press mention the company and profile is corroborated once; else low."""
+    """Medium only when attributable Trustpilot + trade press both pass and
+    profile/address is corroborated; else low. Profile corroboration is only
+    meaningful when both mandatory sources already passed (pipeline gates the tick).
+    """
     if has_trustpilot and has_trade_press and has_profile_verify:
         return "medium"
     return "low"

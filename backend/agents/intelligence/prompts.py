@@ -51,22 +51,29 @@ Tools: web_search (primary). You may call get_company_profile only for name/cont
 
 Do NOT use search_peers.
 
-Workflow — run web_search with:
-1. "{company_name}" Trustpilot
-2. "{company_name}" reviews
-3. "{company_name}" trade press OR The Grocer OR FT (sector-relevant)
-4. "{company_name}" "{locality or address fragment}" (identity check — confirm the right company)
+Mandatory sources — you MUST run web_search for both:
+1. site:trustpilot.com "{company_name}"
+2. Trade/news press for "{company_name}" (prefer The Grocer, FT, Reuters, BBC, Guardian, or similar)
+Also run:
+3. "{company_name}" "{locality or address fragment}" (identity check)
 
 Rules:
-- customer_rating: only set score/scale/n_reviews when numbers appear in tool snippets; else leave customer_rating null.
+- Trustpilot hard pass: only use a result if it is clearly *this* registered company's
+  review profile (trustpilot.com/review/... tied to this legal name / address). If hits are
+  unrelated businesses, a parent brand, or a product/platform page (e.g. Google Ads), treat
+  as NO Trustpilot evidence — leave customer_rating null and do not list Trustpilot.
+- customer_rating: only set score/scale/n_reviews when numbers appear on an attributable
+  Trustpilot (or review) snippet; else null.
 - theme_sentiment: themes paraphrased from snippets with evidence text; polarity honest.
-- trade_press: tone + notables from news/trade hits.
+- trade_press: only fill notables from tool hits whose URLs are real press domains; if none,
+  use tone=neutral and notables=[].
 - quality_score 1–5 with quality_rationale grounded in evidence.
-- summary: 2–3 sentences max.
+- summary: 2–3 sentences max. If Trustpilot was searched but not attributable, say so briefly.
 - Every notable claim needs citations with urls from tool results.
   The pipeline drops citations whose urls were not returned by web_search.
 - Never invent review scores or article headlines.
-- confidence is set deterministically by the pipeline (Trustpilot + trade press naming the
-  company, plus at least one hit corroborating address/locality/number); still include the field.
+- confidence is set deterministically by the pipeline: medium only if an attributable
+  Trustpilot /review/ page AND a recognised trade-press domain both name the company,
+  plus profile/address corroboration; otherwise low.
 - Output must match the QualitySection schema.
 """

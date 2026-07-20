@@ -48,11 +48,12 @@ def _message_text(content: Any) -> str | None:
 
 
 def _iter_web_search_payloads(messages: Sequence[Any] | None):
+    """Only real web_search tool messages (not prompts / model text)."""
     for msg in messages or []:
         name = getattr(msg, "name", None) or (
             msg.get("name") if isinstance(msg, dict) else None
         )
-        if name and name != "web_search":
+        if name != "web_search":
             continue
         content = getattr(msg, "content", None)
         if content is None and isinstance(msg, dict):
@@ -64,7 +65,7 @@ def _iter_web_search_payloads(messages: Sequence[Any] | None):
             payload = json.loads(text)
         except (json.JSONDecodeError, TypeError):
             continue
-        if isinstance(payload, dict):
+        if isinstance(payload, dict) and isinstance(payload.get("results"), list):
             yield payload
 
 
@@ -126,22 +127,21 @@ def web_search_mentions_company(
     return False
 
 
-_TRUSTPILOT_MARKERS = ("trustpilot",)
+# Host checks only — avoids false ticks from query text like '"{name}" Trustpilot'
+# appearing in titles/snippets of unrelated pages.
+_TRUSTPILOT_DOMAINS = ("trustpilot.com",)
 
-_TRADE_PRESS_MARKERS = (
-    "the grocer",
+_TRADE_PRESS_DOMAINS = (
+    "thegrocer.co.uk",
     "ft.com",
-    "financial times",
-    "reuters",
-    "bloomberg",
-    "trade press",
-    "bbc.co.uk/news",
+    "reuters.com",
+    "bloomberg.com",
+    "bbc.co.uk",
     "theguardian.com",
     "telegraph.co.uk",
     "independent.co.uk",
     "cityam.com",
-    "retail gazette",
-    "retailgazette",
+    "retailgazette.co.uk",
 )
 
 
@@ -149,6 +149,17 @@ def _hit_blob(item: dict[str, Any]) -> str:
     return " ".join(
         str(item.get(k) or "") for k in ("title", "content", "url", "snippet")
     ).lower()
+
+
+def _url_host(url: str) -> str:
+    host = urlsplit((url or "").strip()).netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _host_is_domain(host: str, domains: tuple[str, ...]) -> bool:
+    return any(host == d or host.endswith("." + d) for d in domains)
 
 
 def _profile_corroborators(company: dict[str, Any]) -> list[str]:
@@ -177,11 +188,37 @@ def _profile_corroborators(company: dict[str, Any]) -> list[str]:
     return out
 
 
+def _is_attributable_trustpilot(
+    item: dict[str, Any],
+    *,
+    name_needles: list[str],
+    profile_needles: list[str],
+) -> bool:
+    """Hard fail unless this looks like *this* company's Trustpilot review profile.
+
+    Requires trustpilot.com/review/... plus the company name and a CH identity
+    token (address/locality/number) on the same hit — rejects platform pages
+    and unrelated businesses that merely share a brand token (e.g. Google Ads).
+    """
+    url = str(item.get("url") or "").strip()
+    if not _host_is_domain(_url_host(url), _TRUSTPILOT_DOMAINS):
+        return False
+    path = urlsplit(url).path.lower()
+    if "/review/" not in path:
+        return False
+    if not profile_needles:
+        return False
+    blob = _hit_blob(item)
+    if not any(n in blob for n in name_needles):
+        return False
+    return any(p in blob for p in profile_needles)
+
+
 def quality_web_evidence(
     messages: Sequence[Any] | None,
     company: dict[str, Any],
 ) -> dict[str, bool]:
-    """Detect Trustpilot + trade-press hits naming the company, plus one profile corroboration."""
+    """Trustpilot only when attributable /review/ page; trade press by domain + name."""
     name_needles = _company_name_needles(str(company.get("company_name") or ""))
     profile_needles = _profile_corroborators(company)
 
@@ -201,14 +238,30 @@ def quality_web_evidence(
             if not isinstance(item, dict):
                 continue
             blob = _hit_blob(item)
-            if not any(n in blob for n in name_needles):
-                continue
-            if any(m in blob for m in _TRUSTPILOT_MARKERS):
+            names_company = any(n in blob for n in name_needles)
+            host = _url_host(str(item.get("url") or ""))
+
+            if _is_attributable_trustpilot(
+                item,
+                name_needles=name_needles,
+                profile_needles=profile_needles,
+            ):
                 has_trustpilot = True
-            if any(m in blob for m in _TRADE_PRESS_MARKERS):
+
+            if names_company and _host_is_domain(host, _TRADE_PRESS_DOMAINS):
                 has_trade_press = True
-            if profile_needles and any(p in blob for p in profile_needles):
+
+            if (
+                names_company
+                and profile_needles
+                and any(p in blob for p in profile_needles)
+            ):
                 has_profile_verify = True
+
+    # Profile/address only counts once both mandatory sources are present;
+    # if either Trustpilot or trade press failed, treat profile as not found.
+    if not (has_trustpilot and has_trade_press):
+        has_profile_verify = False
 
     return {
         "trustpilot": has_trustpilot,

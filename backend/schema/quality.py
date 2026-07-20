@@ -41,13 +41,19 @@ class QualityConfidenceFactors(BaseModel):
     """Deterministic signals used for quality confidence (pipeline-set)."""
 
     trustpilot: bool = Field(
-        description="Web hit names the company and references Trustpilot",
+        description=(
+            "Attributable trustpilot.com/review/ page for this company "
+            "(name + address/locality/number on the same hit)"
+        ),
     )
     trade_press: bool = Field(
-        description="Web hit names the company and looks like trade/news press",
+        description="web_search result URL is on a recognised trade/news domain and names the company",
     )
     profile_verify: bool = Field(
-        description="At least one web hit also matches address/locality/number from the profile",
+        description=(
+            "Address/locality/number corroborated — only true when Trustpilot and "
+            "trade press both already passed; otherwise treated as not found"
+        ),
     )
 
 
@@ -77,7 +83,7 @@ class QualitySection(BaseModel):
         description="Evidence for this section",
     )
     confidence: ConfidenceLevel = Field(
-        description="Overwritten by pipeline: medium if Trustpilot+trade press+profile verify, else low"
+        description="Overwritten by pipeline: medium if trustpilot.com + trade-press URL + profile verify, else low"
     )
     confidence_factors: QualityConfidenceFactors | None = Field(
         default=None,

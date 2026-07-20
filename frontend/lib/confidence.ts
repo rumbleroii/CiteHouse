@@ -72,12 +72,12 @@ export function qualityConfidenceTooltip(
 
   return {
     criteria: [
-      { label: "Trustpilot mentions company", met: trustpilot },
-      { label: "Trade press mentions company", met: tradePress },
+      { label: "Attributable Trustpilot company profile", met: trustpilot },
+      { label: "Trade-press URL names company", met: tradePress },
       { label: "Profile/address corroborated", met: profileVerify },
     ],
     reasoning: all
-      ? "Medium: Trustpilot, trade press, and a profile detail match all passed."
-      : "Low: Trustpilot, trade press, and profile corroboration are all required.",
+      ? "Medium: Attributable Trustpilot profile, trade press, and profile detail all matched."
+      : "Low: Need attributable Trustpilot and trade press first; profile/address only counts when both of those pass. Unrelated brand/platform hits do not count.",
   };
 }

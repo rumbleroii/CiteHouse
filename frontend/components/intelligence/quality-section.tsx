@@ -66,16 +66,23 @@ export function QualitySectionView({ section }: { section: QualitySection }) {
         </dl>
       )}
 
-      <div className="mt-8 flex flex-col gap-2">
-        <SectionLabel>Trade press · {section.trade_press.tone}</SectionLabel>
-        {section.trade_press.notables.length > 0 && (
-          <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5 text-sm">
-            {section.trade_press.notables.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {(section.confidence_factors?.trade_press ||
+        section.trade_press.notables.length > 0) && (
+        <div className="mt-8 flex flex-col gap-2">
+          <SectionLabel>Trade press · {section.trade_press.tone}</SectionLabel>
+          {section.trade_press.notables.length > 0 ? (
+            <ul className="text-muted-foreground flex list-disc flex-col gap-1 pl-5 text-sm">
+              {section.trade_press.notables.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              Trade-press coverage found; no notable headlines extracted.
+            </p>
+          )}
+        </div>
+      )}
 
       <CitationsList citations={section.citations} />
     </section>
