@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { Citation, ConfidenceLevel } from "@/lib/intelligence";
 import type { ConfidenceTooltipContent } from "@/lib/confidence";
 
@@ -104,7 +106,7 @@ export function TagList({ items }: { items: string[] }) {
   );
 }
 
-export function SectionLabel({ children }: { children: React.ReactNode }) {
+export function SectionLabel({ children }: { children: ReactNode }) {
   return (
     <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
       {children}

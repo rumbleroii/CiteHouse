@@ -14,7 +14,6 @@ export type ConfidenceTooltipContent = {
   reasoning: string;
 };
 
-/** Mirrors backend business_model_confidence. */
 export function businessModelConfidenceTooltip(
   _level: ConfidenceLevel | string,
   sicCodes: string[] | null | undefined,
@@ -28,7 +27,6 @@ export function businessModelConfidenceTooltip(
   };
 }
 
-/** Mirrors backend competition_confidence. */
 export function competitionConfidenceTooltip(
   _level: ConfidenceLevel | string,
   factors?: CompetitionConfidenceFactors | null,
@@ -60,7 +58,6 @@ export function competitionConfidenceTooltip(
   };
 }
 
-/** Mirrors backend quality_confidence. */
 export function qualityConfidenceTooltip(
   _level: ConfidenceLevel | string,
   factors?: QualityConfidenceFactors | null,

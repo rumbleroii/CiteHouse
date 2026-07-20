@@ -6,8 +6,6 @@ import json
 from typing import Any, Literal, TypedDict
 
 from schema.common import ConfidenceLevel
-from schema.identity import CompanyIdentity
-from schema.report import CompanyIntelligenceReport, ReportConfidence
 
 Stage = Literal[
     "profile",
@@ -83,8 +81,6 @@ def update_confidence(
         base.get("competition", "low"),
         base.get("quality", "low"),
     ]
-    # Overall = weakest completed pillar among those that have been set meaningfully
-    # For progressive runs, only consider pillars that exist in state separately.
     base["overall"] = min(pillars, key=lambda c: _CONFIDENCE_RANK.get(str(c), 0))
     return base
 
@@ -122,27 +118,6 @@ def state_to_partial_report(state: IntelligenceState) -> dict[str, Any]:
         conf["overall"] = overall_from_completed(state)
         payload["confidence"] = conf
     return payload
-
-
-def state_to_full_report(state: IntelligenceState) -> CompanyIntelligenceReport:
-    """Validate a completed run into CompanyIntelligenceReport."""
-    company = CompanyIdentity.model_validate(state["company"])
-    if not state.get("business_model") or not state.get("competition") or not state.get("quality"):
-        raise ValueError("Cannot build full report until all pillars are complete")
-
-    conf_raw = state.get("confidence") or {}
-    conf_raw = {
-        **conf_raw,
-        "overall": overall_from_completed(state),
-    }
-    return CompanyIntelligenceReport(
-        company=company,
-        business_model=state["business_model"],
-        competition=state["competition"],
-        quality=state["quality"],
-        confidence=ReportConfidence.model_validate(conf_raw),
-        gaps=list(state.get("gaps") or []),
-    )
 
 
 def dumps_section(model: Any) -> dict[str, Any]:

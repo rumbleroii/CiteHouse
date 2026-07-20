@@ -1,7 +1,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-/** Slim company shape returned by the search API (agent-friendly). */
+/** Company fields returned by the search API. */
 export type CompanyLookupResponse = {
   company_number: string;
   company_name: string;

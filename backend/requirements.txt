@@ -1,9 +1,7 @@
 fastapi
 uvicorn[standard]
 langgraph
-langchain
 langchain-openai
-cursor-sdk
 pydantic
 httpx
 python-dotenv

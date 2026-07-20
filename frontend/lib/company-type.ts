@@ -47,7 +47,6 @@ const COMPANY_TYPE_LABELS: Record<string, string> = {
   "registered-overseas-entity": "Overseas entity",
 };
 
-/** Format a CH company_type code for display, e.g. "Public limited company". */
 export function formatCompanyType(type: string | null | undefined): string {
   if (!type) return "";
   return COMPANY_TYPE_LABELS[type] ?? type;

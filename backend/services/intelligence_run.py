@@ -43,7 +43,6 @@ async def _execute_run(run_id: str, company_number: str) -> None:
 
     try:
         async for update in graph.astream(state, stream_mode="updates"):
-            # update is {node_name: partial_state}
             for _node, partial in update.items():
                 if not isinstance(partial, dict):
                     continue

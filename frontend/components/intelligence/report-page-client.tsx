@@ -105,12 +105,6 @@ export function ReportPageClient({
           }
           source?.close();
         });
-
-        source.onerror = () => {
-          if (!cancelled && source?.readyState === EventSource.CLOSED) {
-            // stream closed — leave current report if any
-          }
-        };
       } catch (err) {
         if (!cancelled) {
           setError(
