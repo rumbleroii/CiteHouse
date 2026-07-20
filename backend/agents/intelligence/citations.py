@@ -188,35 +188,17 @@ def _profile_corroborators(company: dict[str, Any]) -> list[str]:
     return out
 
 
-def _is_attributable_trustpilot(
-    item: dict[str, Any],
-    *,
-    name_needles: list[str],
-) -> bool:
-    """True for a Trustpilot company review profile that names this company.
-
-    Requires trustpilot.com/review/... plus the company name in the hit.
-    Address/locality corroboration is a separate profile_verify tick — Trustpilot
-    snippets almost never include the Companies House registered-office string,
-    so requiring it here false-negatives real review pages.
-    """
-    url = str(item.get("url") or "").strip()
-    if not _host_is_domain(_url_host(url), _TRUSTPILOT_DOMAINS):
-        return False
-    path = urlsplit(url).path.lower()
-    if "/review/" not in path:
-        return False
-    if not name_needles:
-        return False
-    blob = _hit_blob(item)
-    return any(n in blob for n in name_needles)
-
-
 def quality_web_evidence(
     messages: Sequence[Any] | None,
     company: dict[str, Any],
+    *,
+    citations: Sequence[Any] | None = None,
 ) -> dict[str, bool]:
-    """Trustpilot only when attributable /review/ page; trade press by domain + name."""
+    """Trustpilot and trade press use the same rule: allowed domain + company name.
+
+    Also counts allowlisted citations so the UI tick cannot disagree with a
+    shown Trustpilot/trade-press citation.
+    """
     name_needles = _company_name_needles(str(company.get("company_name") or ""))
     profile_needles = _profile_corroborators(company)
 
@@ -231,29 +213,39 @@ def quality_web_evidence(
             "profile_verify": False,
         }
 
+    def _consider(blob: str, host: str) -> None:
+        nonlocal has_trustpilot, has_trade_press, has_profile_verify
+        names_company = any(n in blob for n in name_needles)
+        if not names_company:
+            return
+        if _host_is_domain(host, _TRUSTPILOT_DOMAINS):
+            has_trustpilot = True
+        if _host_is_domain(host, _TRADE_PRESS_DOMAINS):
+            has_trade_press = True
+        if profile_needles and any(p in blob for p in profile_needles):
+            has_profile_verify = True
+
     for payload in _iter_web_search_payloads(messages):
         for item in payload.get("results") or []:
             if not isinstance(item, dict):
                 continue
-            blob = _hit_blob(item)
-            names_company = any(n in blob for n in name_needles)
-            host = _url_host(str(item.get("url") or ""))
+            _consider(_hit_blob(item), _url_host(str(item.get("url") or "")))
 
-            if _is_attributable_trustpilot(
-                item,
-                name_needles=name_needles,
-            ):
-                has_trustpilot = True
-
-            if names_company and _host_is_domain(host, _TRADE_PRESS_DOMAINS):
-                has_trade_press = True
-
-            if (
-                names_company
-                and profile_needles
-                and any(p in blob for p in profile_needles)
-            ):
-                has_profile_verify = True
+    # Keep confidence ticks aligned with citations the pipeline already kept.
+    for citation in citations or []:
+        url = getattr(citation, "url", None)
+        if url is None and isinstance(citation, dict):
+            url = citation.get("url")
+        url_text = str(url or "").strip()
+        if not url_text:
+            continue
+        title = getattr(citation, "title", None)
+        snippet = getattr(citation, "snippet", None)
+        if isinstance(citation, dict):
+            title = citation.get("title")
+            snippet = citation.get("snippet")
+        blob = " ".join(str(x or "") for x in (title, snippet, url_text)).lower()
+        _consider(blob, _url_host(url_text))
 
     # Profile/address only counts once both mandatory sources are present;
     # if either Trustpilot or trade press failed, treat profile as not found.

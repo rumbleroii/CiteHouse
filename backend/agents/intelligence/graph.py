@@ -286,7 +286,11 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
             pillar_label="Quality",
             peers_ok=False,
         )
-        evidence = quality_web_evidence(result.get("messages"), company)
+        evidence = quality_web_evidence(
+            result.get("messages"),
+            company,
+            citations=section.citations,
+        )
         level = quality_confidence(
             has_trustpilot=evidence["trustpilot"],
             has_trade_press=evidence["trade_press"],
@@ -314,8 +318,7 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
             gaps = merge_gaps(
                 gaps,
                 [
-                    "No attributable Trustpilot company profile "
-                    "(need trustpilot.com/review/... that names this company)"
+                    "No Trustpilot URL naming this company in web search results",
                 ],
             )
         if not evidence["trustpilot"] and not evidence["trade_press"]:

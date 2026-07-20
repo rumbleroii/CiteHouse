@@ -58,9 +58,8 @@ Also run:
 3. "{company_name}" "{locality or address fragment}" (identity check)
 
 Rules:
-- Trustpilot hard pass: only use a result if it is clearly *this* company's review profile
-  (trustpilot.com/review/... that names this company). If hits are unrelated businesses,
-  a parent brand, or a product/platform page (e.g. Google Ads), treat as NO Trustpilot
+- Trustpilot hard pass: same bar as trade press — a trustpilot.com URL that names *this*
+  company. If hits are unrelated businesses or a parent brand, treat as NO Trustpilot
   evidence — leave customer_rating null and do not list Trustpilot.
 - customer_rating: only set score/scale/n_reviews when numbers appear on an attributable
   Trustpilot (or review) snippet; else null.
@@ -72,8 +71,8 @@ Rules:
 - Every notable claim needs citations with urls from tool results.
   The pipeline drops citations whose urls were not returned by web_search.
 - Never invent review scores or article headlines.
-- confidence is set deterministically by the pipeline: medium only if an attributable
-  Trustpilot /review/ page AND a recognised trade-press domain both name the company,
-  plus profile/address corroboration; otherwise low.
+- confidence is set deterministically by the pipeline: medium only if a Trustpilot
+  result AND a recognised trade-press domain both name the company, plus
+  profile/address corroboration; otherwise low.
 - Output must match the QualitySection schema.
 """

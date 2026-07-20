@@ -41,9 +41,7 @@ class QualityConfidenceFactors(BaseModel):
     """Deterministic signals used for quality confidence (pipeline-set)."""
 
     trustpilot: bool = Field(
-        description=(
-            "Attributable trustpilot.com/review/ page that names this company"
-        ),
+        description="web_search/citation URL is on trustpilot.com and names the company",
     )
     trade_press: bool = Field(
         description="web_search result URL is on a recognised trade/news domain and names the company",
