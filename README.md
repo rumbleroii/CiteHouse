@@ -2,7 +2,7 @@
 
 Next.js + shadcn/ui frontend, FastAPI backend.
 
-**System design:** see [ARCHITECTURE.md](./ARCHITECTURE.md) for overall architecture, LLM usage, grounding, and uncertainty handling.
+**System design:** see [Citehouse-Architecture.pdf](./Citehouse-Architecture.pdf) for overall architecture, LLM usage, grounding, and uncertainty handling.
 
 ## Setup
 
