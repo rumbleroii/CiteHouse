@@ -1,6 +1,8 @@
 import type { BusinessModelSection } from "@/lib/intelligence";
+import { businessModelConfidenceTooltip } from "@/lib/confidence";
 import {
   CitationsList,
+  ConfidenceWithTooltip,
   SectionLabel,
   TagList,
 } from "@/components/intelligence/shared";
@@ -10,10 +12,22 @@ export function BusinessModelSectionView({
 }: {
   section: BusinessModelSection;
 }) {
+  const content = businessModelConfidenceTooltip(
+    section.confidence,
+    section.sic_codes,
+  );
+
   return (
     <section className="border-line mt-10 border-t pt-10 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
-      <SectionLabel>Business model · {section.confidence}</SectionLabel>
-      <p className="text-ink mt-4 max-w-prose font-[family-name:var(--font-display)] text-xl leading-snug">
+      <SectionLabel>
+        Business model ·{" "}
+        <ConfidenceWithTooltip
+          level={section.confidence}
+          content={content}
+          tooltipId="business-model-confidence-tooltip"
+        />
+      </SectionLabel>
+      <p className="text-ink mt-4 max-w-prose text-base leading-relaxed">
         {section.summary}
       </p>
       <div className="mt-8 grid gap-8 sm:grid-cols-2">

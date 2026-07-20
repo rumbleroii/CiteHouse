@@ -23,18 +23,17 @@ async def search_peers(
     company_number: str | None = None,
     sic_codes: str | None = None,
     location: str | None = None,
-    size: int = 10,
 ) -> str:
-    """Find active peer companies sharing SIC codes (± location).
+    """Find all active peer companies sharing SIC codes (± location).
 
     Prefer company_number so SIC/geo are taken from the profile. Or pass
     comma-separated sic_codes (and optional location) explicitly.
+    Returns every matching peer (paginated under the hood).
     """
     result = await fetch_peers(
         company_number=company_number,
         sic_codes=sic_codes,
         location=location,
-        size=size,
     )
     return json.dumps(result)
 

@@ -8,14 +8,15 @@ Rules:
 - Call get_company_profile with the given company_number.
 - Fill BusinessModelSection from statutory fields (SIC, type, address, dates) and conservative inference.
 - revenue_model_tags / customer_segments / products_services must be cautious labels grounded in SIC + company name.
-- summary: 5–8 sentences, specific, no marketing fluff.
+- summary: 2–3 sentences max, specific, no marketing fluff.
 - citations: use source_ref like companies_house:profile.sic_codes (and url only if a tool returned one — none expected here).
-- If SIC codes are missing, set confidence=low and note that in your work; the pipeline will record gaps.
+  The pipeline drops citations that are not allowed CH refs or not from tool URLs.
+- confidence is set deterministically by the pipeline (SIC present → medium, else low); still include the field.
 - Never invent company numbers or financial figures.
 - Output must match the BusinessModelSection schema.
 """
 
-COMPETITION_PROMPT = """You assess competitive intensity for a UK company.
+COMPETITION_PROMPT = """You map the competitive arena for a UK company.
 
 Tools: get_company_profile, search_peers, web_search.
 
@@ -26,14 +27,21 @@ Workflow:
    - "{company_name}" competitors UK
    - "{company_name}" vs OR rivals / market competitors (use SIC context)
    - "{company_name}" market share (optional)
+   - "{company_name}" "{locality or address fragment}" (identity check)
 
 Rules:
-- peer_set and company_number values must come from search_peers (or omit numbers for web-only names).
-- peer_count_estimate comes from search_peers total_results.
-- rivalry_score 1–5 with rivalry_evidence grounded in peer density and/or web snippets.
-- citations: CH source_ref for peers/totals; urls for web evidence.
+- Call search_peers; peer_set and peer_count_estimate are overwritten by the pipeline from
+  that full peer list — you may leave peer_set empty or partial.
+- Do NOT rate rivalry or competitive intensity. Set rivalry_score to 1 as a placeholder;
+  the pipeline overwrites it from peer_count_estimate.
+- rivalry_evidence: short factual bullets about peers or web findings — no intensity ratings.
+- summary: 2–3 sentences on the arena and notable peers only. Do not mention a rivalry
+  score, do not say how competitive the market is (e.g. avoid "highly competitive").
+- citations: CH source_ref for peers/totals; urls only from web_search tool results.
+  Invented sources are dropped by the pipeline.
 - Never invent Companies House numbers.
-- If peers fail or evidence is thin, confidence=low and keep claims modest.
+- confidence is set deterministically by the pipeline (peers + web name refs + profile/address
+  corroboration); still include the field.
 - Output must match the CompetitionSection schema.
 """
 
@@ -47,14 +55,18 @@ Workflow — run web_search with:
 1. "{company_name}" Trustpilot
 2. "{company_name}" reviews
 3. "{company_name}" trade press OR The Grocer OR FT (sector-relevant)
+4. "{company_name}" "{locality or address fragment}" (identity check — confirm the right company)
 
 Rules:
 - customer_rating: only set score/scale/n_reviews when numbers appear in tool snippets; else leave customer_rating null.
 - theme_sentiment: themes paraphrased from snippets with evidence text; polarity honest.
 - trade_press: tone + notables from news/trade hits.
 - quality_score 1–5 with quality_rationale grounded in evidence.
+- summary: 2–3 sentences max.
 - Every notable claim needs citations with urls from tool results.
+  The pipeline drops citations whose urls were not returned by web_search.
 - Never invent review scores or article headlines.
-- If evidence is thin, confidence=low.
+- confidence is set deterministically by the pipeline (Trustpilot + trade press naming the
+  company, plus at least one hit corroborating address/locality/number); still include the field.
 - Output must match the QualitySection schema.
 """

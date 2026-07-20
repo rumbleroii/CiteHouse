@@ -8,7 +8,18 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 
 from agents.intelligence.business_model import get_business_model_agent
+from agents.intelligence.citations import (
+    apply_citation_filter,
+    quality_web_evidence,
+    web_search_mentions_company,
+)
 from agents.intelligence.competition import get_competition_agent
+from agents.intelligence.confidence import (
+    business_model_confidence,
+    competition_confidence,
+    quality_confidence,
+    rivalry_score_from_peer_count,
+)
 from agents.intelligence.reputation import get_reputation_agent
 from agents.intelligence.state import (
     IntelligenceState,
@@ -17,10 +28,11 @@ from agents.intelligence.state import (
     update_confidence,
 )
 from schema.business_model import BusinessModelSection
-from schema.competition import CompetitionSection
+from schema.competition import CompetitionArena, CompetitionSection, PeerCompany
 from schema.identity import CompanyIdentity
 from schema.quality import QualitySection
 from services.search_companies import get_company_profile
+from services.search_peers import search_peers
 
 
 def _require_structured(result: dict[str, Any], model_cls: type):
@@ -67,12 +79,27 @@ async def business_model_node(state: IntelligenceState) -> dict[str, Any]:
         agent = get_business_model_agent()
         result = await agent.ainvoke({"messages": [{"role": "user", "content": prompt}]})
         section = _require_structured(result, BusinessModelSection)
+        sic_codes = section.sic_codes or company.get("sic_codes") or []
+        level = business_model_confidence(sic_codes=sic_codes)
+        section = section.model_copy(update={"confidence": level})
+        section, citation_gaps = apply_citation_filter(
+            section,
+            company=company,
+            messages=result.get("messages"),
+            pillar_label="Business model",
+            peers_ok=False,
+        )
         gaps = list(state.get("gaps") or [])
-        if section.confidence == "low":
-            gaps = merge_gaps(gaps, ["Business model evidence is thin (low confidence)"])
-        if not section.sic_codes and not company.get("sic_codes"):
-            gaps = merge_gaps(gaps, ["Business model lacks SIC grounding"])
-        conf = update_confidence(state.get("confidence"), business_model=section.confidence)
+        if level == "low":
+            gaps = merge_gaps(
+                gaps,
+                [
+                    "Business model confidence is low (no SIC codes)",
+                    "Business model lacks SIC grounding",
+                ],
+            )
+        gaps = merge_gaps(gaps, citation_gaps)
+        conf = update_confidence(state.get("confidence"), business_model=level)
         return {
             "business_model": dumps_section(section),
             "confidence": conf,
@@ -97,17 +124,71 @@ async def competition_node(state: IntelligenceState) -> dict[str, Any]:
         f"Assess competition for company_number={number}.\n"
         f"Profile:\n{json.dumps(company)}\n"
         f"Business model section:\n{json.dumps(bm)}\n"
-        "Use search_peers first, then web_search with the required query patterns. "
+        "Use search_peers first, then web_search with competitor queries and at least one "
+        "query that includes the company name plus address or locality to confirm identity. "
         "Return CompetitionSection."
     )
     try:
         agent = get_competition_agent()
         result = await agent.ainvoke({"messages": [{"role": "user", "content": prompt}]})
         section = _require_structured(result, CompetitionSection)
+        peers = await search_peers(company_number=number)
+        peer_set = [
+            PeerCompany(
+                company_name=item["company_name"],
+                company_number=item.get("company_number"),
+            )
+            for item in peers.get("items") or []
+            if item.get("company_name")
+        ]
+        peer_count = int(peers.get("total_results") or len(peer_set))
+        arena_raw = peers.get("arena") or {}
+        score = rivalry_score_from_peer_count(peer_count)
+        section = section.model_copy(
+            update={
+                "arena": CompetitionArena(
+                    sic_codes=list(arena_raw.get("sic_codes") or section.arena.sic_codes),
+                    geography=arena_raw.get("geography") or section.arena.geography,
+                ),
+                "peer_set": peer_set,
+                "peer_count_estimate": peer_count,
+                "rivalry_score": score,
+            }
+        )
+        section, citation_gaps = apply_citation_filter(
+            section,
+            company=company,
+            messages=result.get("messages"),
+            pillar_label="Competition",
+            peers_ok=True,
+        )
+        has_peer_set = len(peer_set) > 0
+        has_web_refs = web_search_mentions_company(
+            result.get("messages"),
+            str(company.get("company_name") or ""),
+        )
+        evidence = quality_web_evidence(result.get("messages"), company)
+        has_profile_verify = evidence["profile_verify"]
+        level = competition_confidence(
+            has_peer_set=has_peer_set,
+            has_web_company_refs=has_web_refs,
+            has_profile_verify=has_profile_verify,
+        )
+        section = section.model_copy(
+            update={
+                "confidence": level,
+                "confidence_factors": {
+                    "peer_set": has_peer_set,
+                    "web_company_refs": has_web_refs,
+                    "profile_verify": has_profile_verify,
+                },
+            }
+        )
         gaps = list(state.get("gaps") or [])
-        if section.confidence == "low":
-            gaps = merge_gaps(gaps, ["Competition evidence is thin (low confidence)"])
-        conf = update_confidence(state.get("confidence"), competition=section.confidence)
+        if level == "low":
+            gaps = merge_gaps(gaps, ["Competition confidence is low (no peer set)"])
+        gaps = merge_gaps(gaps, citation_gaps)
+        conf = update_confidence(state.get("confidence"), competition=level)
         return {
             "competition": dumps_section(section),
             "confidence": conf,
@@ -132,18 +213,49 @@ async def quality_node(state: IntelligenceState) -> dict[str, Any]:
         f"Assess reputation/quality for company_number={number}.\n"
         f"Profile:\n{json.dumps(company)}\n"
         f"Competition arena (context):\n{json.dumps((competition or {}).get('arena'))}\n"
-        "Use web_search with Trustpilot/reviews/trade-press queries. Return QualitySection."
+        "Use web_search with Trustpilot, trade-press, and at least one query that includes "
+        "the company name plus address or locality to confirm identity. Return QualitySection."
     )
     try:
         agent = get_reputation_agent()
         result = await agent.ainvoke({"messages": [{"role": "user", "content": prompt}]})
         section = _require_structured(result, QualitySection)
+        section, citation_gaps = apply_citation_filter(
+            section,
+            company=company,
+            messages=result.get("messages"),
+            pillar_label="Quality",
+            peers_ok=False,
+        )
+        evidence = quality_web_evidence(result.get("messages"), company)
+        level = quality_confidence(
+            has_trustpilot=evidence["trustpilot"],
+            has_trade_press=evidence["trade_press"],
+            has_profile_verify=evidence["profile_verify"],
+        )
+        section = section.model_copy(
+            update={
+                "confidence": level,
+                "confidence_factors": {
+                    "trustpilot": evidence["trustpilot"],
+                    "trade_press": evidence["trade_press"],
+                    "profile_verify": evidence["profile_verify"],
+                },
+            }
+        )
         gaps = list(state.get("gaps") or [])
         if section.customer_rating is None:
             gaps = merge_gaps(gaps, ["No numeric customer rating found in web snippets"])
-        if section.confidence == "low":
-            gaps = merge_gaps(gaps, ["Quality evidence is thin (low confidence)"])
-        conf = update_confidence(state.get("confidence"), quality=section.confidence)
+        if level == "low":
+            gaps = merge_gaps(
+                gaps,
+                [
+                    "Quality confidence is low (need Trustpilot + trade press "
+                    "naming the company, and one profile/address corroboration)"
+                ],
+            )
+        gaps = merge_gaps(gaps, citation_gaps)
+        conf = update_confidence(state.get("confidence"), quality=level)
         return {
             "quality": dumps_section(section),
             "confidence": conf,

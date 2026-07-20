@@ -6,7 +6,8 @@ from fastapi import HTTPException
 
 from services.search_companies import advanced_search, get_company_profile
 
-DEFAULT_PEER_SIZE = 10
+# Page size for each CH request (API paging), not a cap on total peers returned.
+_PAGE_SIZE = 100
 
 
 def _geography_from_profile(profile: dict) -> str | None:
@@ -18,9 +19,8 @@ async def search_peers(
     company_number: str | None = None,
     sic_codes: str | None = None,
     location: str | None = None,
-    size: int = DEFAULT_PEER_SIZE,
 ) -> dict:
-    """Return active peers sharing SIC codes, optionally narrowed by location.
+    """Return all active peers sharing SIC codes, optionally narrowed by location.
 
     Provide either `company_number` (SIC/geo derived from profile) or explicit
     `sic_codes` (comma-separated). The seed company is excluded from `items`.
@@ -55,23 +55,40 @@ async def search_peers(
     if not arena_codes:
         arena_codes = [c.strip() for c in str(sic_codes).split(",") if c.strip()]
 
-    # Fetch a few extras so excluding the seed still fills `size`.
-    fetch_size = min(max(size + (3 if exclude_number else 0), size), 100)
-    result = await advanced_search(
-        {
-            "sic_codes": ",".join(arena_codes),
-            "location": geography,
-            "company_status": "active",
-            "size": fetch_size,
-        }
-    )
+    base_filters = {
+        "sic_codes": ",".join(arena_codes),
+        "location": geography,
+        "company_status": "active",
+    }
+
+    collected: list[dict] = []
+    start_index = 0
+    total_results = 0
+
+    while True:
+        result = await advanced_search(
+            {
+                **base_filters,
+                "size": _PAGE_SIZE,
+                "start_index": start_index,
+            }
+        )
+        if start_index == 0:
+            total_results = int(result.get("total_results") or 0)
+        page = [item for item in (result.get("items") or []) if isinstance(item, dict)]
+        if not page:
+            break
+        collected.extend(page)
+        start_index += len(page)
+        if start_index >= total_results or len(page) < _PAGE_SIZE:
+            break
 
     items = [
         item
-        for item in result.get("items") or []
+        for item in collected
         if not exclude_number
         or str(item.get("company_number", "")).upper() != exclude_number.upper()
-    ][:size]
+    ]
 
     return {
         "arena": {
@@ -79,6 +96,6 @@ async def search_peers(
             "geography": geography,
         },
         "seed_company_number": exclude_number,
-        "total_results": result.get("total_results", len(items)),
+        "total_results": total_results,
         "items": items,
     }

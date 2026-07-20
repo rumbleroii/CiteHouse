@@ -27,13 +27,26 @@ class PeerCompany(BaseModel):
     )
 
 
+class CompetitionConfidenceFactors(BaseModel):
+    """Deterministic signals used for competition confidence (pipeline-set)."""
+
+    peer_set: bool = Field(description="True when Companies House returned peers")
+    web_company_refs: bool = Field(
+        description="True when web_search hits mention the company name",
+    )
+    profile_verify: bool = Field(
+        default=False,
+        description="At least one web hit also matches address/locality/number from the profile",
+    )
+
+
 class CompetitionSection(BaseModel):
     """Structured view of rivalry intensity in the defined arena."""
 
     arena: CompetitionArena = Field(description="SIC × geography slice used for peers")
     peer_set: list[PeerCompany] = Field(
         default_factory=list,
-        description="5–10 peer companies in the arena",
+        description="All peer companies from Companies House for the arena",
     )
     peer_count_estimate: int = Field(
         ge=0,
@@ -45,15 +58,23 @@ class CompetitionSection(BaseModel):
     rivalry_score: int = Field(
         ge=1,
         le=5,
-        description="Rivalry intensity 1 (low) to 5 (high)",
+        description="Overwritten by pipeline from peer_count_estimate (1–5)",
     )
     rivalry_evidence: list[str] = Field(
         default_factory=list,
         description="Short evidence bullets supporting rivalry_score",
     )
-    summary: str = Field(description="Short competition summary")
+    summary: str = Field(
+        description="2–3 sentence competition summary (keep brief)"
+    )
     citations: list[Citation] = Field(
         default_factory=list,
         description="Evidence for this section",
     )
-    confidence: ConfidenceLevel = Field(description="Confidence in this section")
+    confidence: ConfidenceLevel = Field(
+        description="Overwritten by pipeline: high if peers+web+profile verify, medium if peers only, else low"
+    )
+    confidence_factors: CompetitionConfidenceFactors | None = Field(
+        default=None,
+        description="Pipeline ticks for peer set and web company-name references",
+    )

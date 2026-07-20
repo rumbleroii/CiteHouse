@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import os
+from contextvars import ContextVar
 from typing import Literal
 
+from fastapi import HTTPException
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
@@ -17,6 +19,9 @@ from services.search_companies import (
     search_by_company_number,
 )
 
+MAX_SEARCH_TRIES = 5
+_search_tries: ContextVar[int] = ContextVar("company_search_tries", default=0)
+
 SYSTEM_PROMPT = """You help users find the correct UK company on Companies House.
 
 Use the search tools. Results are already slim (name, number, status, type, dates, address).
@@ -26,10 +31,20 @@ Rules:
 - Start with search_companies for a plain name. Use filter_companies when the user gives
   filters: location, status, legal type/subtype, SIC/business activity, incorporation or
   dissolution dates, or name includes/excludes.
+- Do not give up after one weak result. You may make up to 5 search attempts
+  (search_companies or filter_companies). Vary the query each time (e.g. strip Ltd/PLC,
+  try a shorter name, add location/status filters). get_company does not count as a search try.
+- If a tool returns max_search_tries_reached, stop searching and decide immediately from
+  what you already have.
 - If one result clearly matches, set status=found and fill company_number.
-- If several could match, set status=needs_clarification, put likely company_numbers in candidates, and ask a short clarifying question (location, status, year, SIC, etc.).
-- If nothing useful is found, set status=not_found and clearly say no matching company was found. Do not ask for follow-up details when nothing matched.
-- When the user sends a follow-up with prior candidates, use that context and search again to resolve to one company.
+- If several could match, set status=needs_clarification, put the likely company_numbers in
+  candidates (always include every plausible hit from the tools — never clarify with an
+  empty candidates list when search returned results), and ask a short clarifying question
+  (location, status, year, SIC, etc.).
+- Only set status=not_found after you have used your search attempts (or hit the limit) and
+  still have nothing plausible. Do not ask for follow-up details when nothing matched.
+- When the user sends a follow-up with prior candidates, use that context and search again
+  to resolve to one company.
 - Never invent company numbers. Only use numbers returned by tools.
 """
 
@@ -61,11 +76,47 @@ class AgentDecision(BaseModel):
     )
 
 
+def reset_search_tries() -> None:
+    _search_tries.set(0)
+
+
+def _begin_search_try() -> str | None:
+    tries = _search_tries.get()
+    if tries >= MAX_SEARCH_TRIES:
+        return json.dumps(
+            {
+                "error": "max_search_tries_reached",
+                "tries": tries,
+                "message": (
+                    f"Reached the limit of {MAX_SEARCH_TRIES} search attempts. "
+                    "Decide now using results so far."
+                ),
+            }
+        )
+    _search_tries.set(tries + 1)
+    return None
+
+
+def _tool_error(exc: Exception) -> str:
+    if isinstance(exc, HTTPException):
+        detail = exc.detail
+        message = detail if isinstance(detail, str) else str(detail)
+    else:
+        message = str(exc) or exc.__class__.__name__
+    return json.dumps({"error": "search_failed", "message": message})
+
+
 @tool
 async def search_companies(query: str) -> str:
     """Search Companies House by company name or free-text query."""
-    result = await search_by_company_name(query, items_per_page=10)
-    return json.dumps(result)
+    limit = _begin_search_try()
+    if limit is not None:
+        return limit
+    try:
+        result = await search_by_company_name(query, items_per_page=10)
+        return json.dumps(result)
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @tool
@@ -88,30 +139,39 @@ async def filter_companies(
     (business activity), incorporation/dissolution date ranges (YYYY-MM-DD),
     or name includes/excludes. Comma-separate multiple statuses, types, or SIC codes.
     """
-    result = await advanced_search(
-        {
-            "company_name_includes": company_name_includes,
-            "company_name_excludes": company_name_excludes,
-            "company_status": company_status,
-            "company_subtype": company_subtype,
-            "company_type": company_type,
-            "location": location,
-            "sic_codes": sic_codes,
-            "incorporated_from": incorporated_from,
-            "incorporated_to": incorporated_to,
-            "dissolved_from": dissolved_from,
-            "dissolved_to": dissolved_to,
-            "size": 10,
-        }
-    )
-    return json.dumps(result)
+    limit = _begin_search_try()
+    if limit is not None:
+        return limit
+    try:
+        result = await advanced_search(
+            {
+                "company_name_includes": company_name_includes,
+                "company_name_excludes": company_name_excludes,
+                "company_status": company_status,
+                "company_subtype": company_subtype,
+                "company_type": company_type,
+                "location": location,
+                "sic_codes": sic_codes,
+                "incorporated_from": incorporated_from,
+                "incorporated_to": incorporated_to,
+                "dissolved_from": dissolved_from,
+                "dissolved_to": dissolved_to,
+                "size": 10,
+            }
+        )
+        return json.dumps(result)
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 @tool
 async def get_company(company_number: str) -> str:
     """Fetch one company by exact Companies House registration number (includes SIC)."""
-    result = await search_by_company_number(company_number)
-    return json.dumps(result)
+    try:
+        result = await search_by_company_number(company_number)
+        return json.dumps(result)
+    except Exception as exc:
+        return _tool_error(exc)
 
 
 _agent = None
@@ -127,6 +187,7 @@ def get_agent():
 
     model_name = os.getenv("OPENAI_MODEL", "gpt-5.6-luna").strip() or "gpt-5.6-luna"
     # Luna rejects function tools on chat completions unless reasoning is off.
+    # Agentic company search stays on Luna; intelligence uses OPENAI_INTELLIGENCE_MODEL.
     model = ChatOpenAI(model=model_name, reasoning_effort="none")
     _agent = create_react_agent(
         model,

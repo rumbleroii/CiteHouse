@@ -1,34 +1,100 @@
+import type { ReactNode } from "react";
+
 import type { CompanyIdentity } from "@/lib/intelligence";
-import { SectionLabel, TagList } from "@/components/intelligence/shared";
+import { formatCompanyType } from "@/lib/company-type";
+import { SectionLabel } from "@/components/intelligence/shared";
+
+function ProfileField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="py-2.5">
+      <dt className="text-muted-foreground text-xs tracking-[0.14em] uppercase">
+        {label}
+      </dt>
+      <dd className="text-ink mt-1.5 text-sm leading-relaxed">{children}</dd>
+    </div>
+  );
+}
+
+function formatStatus(status: string): string {
+  if (!status) return status;
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatDate(value: string): string {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) return value;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(parsed));
+}
 
 export function IdentityHeader({ company }: { company: CompanyIdentity }) {
+  const location = [company.locality, company.region, company.country]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <header className="motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
-      <SectionLabel>Company intelligence dossier</SectionLabel>
+      <SectionLabel>Company profile</SectionLabel>
       <h1 className="text-ink mt-3 font-[family-name:var(--font-display)] text-4xl leading-[1.05] tracking-tight sm:text-5xl">
         {company.company_name}
       </h1>
-      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="text-ink font-mono">{company.company_number}</span>
-        {company.company_status && <span>· {company.company_status}</span>}
-        {company.company_type && <span>· {company.company_type}</span>}
-        {(company.locality || company.region) && (
-          <span>
-            · {[company.locality, company.region].filter(Boolean).join(", ")}
+
+      <dl className="mt-8 max-w-xl">
+        <ProfileField label="Company number">
+          <span className="font-mono tracking-wide">
+            {company.company_number}
           </span>
+        </ProfileField>
+
+        {company.company_status && (
+          <ProfileField label="Status">
+            {formatStatus(company.company_status)}
+          </ProfileField>
         )}
-      </div>
-      {company.address_snippet && (
-        <p className="text-muted-foreground mt-2 max-w-prose text-sm">
-          {company.address_snippet}
-        </p>
-      )}
-      {company.sic_codes && company.sic_codes.length > 0 && (
-        <div className="mt-5 flex flex-col gap-2">
-          <SectionLabel>SIC codes</SectionLabel>
-          <TagList items={company.sic_codes} />
-        </div>
-      )}
+
+        {company.company_type && (
+          <ProfileField label="Company type">
+            {formatCompanyType(company.company_type)}
+          </ProfileField>
+        )}
+
+        {company.date_of_creation && (
+          <ProfileField label="Date of incorporation">
+            {formatDate(company.date_of_creation)}
+          </ProfileField>
+        )}
+
+        {company.date_of_cessation && (
+          <ProfileField label="Date of cessation">
+            {formatDate(company.date_of_cessation)}
+          </ProfileField>
+        )}
+
+        {company.address_snippet && (
+          <ProfileField label="Registered office address">
+            {company.address_snippet}
+          </ProfileField>
+        )}
+
+        {location && !company.address_snippet && (
+          <ProfileField label="Location">{location}</ProfileField>
+        )}
+
+        {company.sic_codes && company.sic_codes.length > 0 && (
+          <ProfileField label="Standard Industrial Classification">
+            <span className="font-mono">{company.sic_codes.join(", ")}</span>
+          </ProfileField>
+        )}
+      </dl>
     </header>
   );
 }

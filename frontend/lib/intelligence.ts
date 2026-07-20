@@ -45,6 +45,12 @@ export type PeerCompany = {
   company_number?: string | null;
 };
 
+export type CompetitionConfidenceFactors = {
+  peer_set: boolean;
+  web_company_refs: boolean;
+  profile_verify?: boolean;
+};
+
 export type CompetitionSection = {
   arena: CompetitionArena;
   peer_set: PeerCompany[];
@@ -55,6 +61,8 @@ export type CompetitionSection = {
   summary: string;
   citations: Citation[];
   confidence: ConfidenceLevel;
+  /** Pipeline signals for confidence tooltip (not from the LLM). */
+  confidence_factors?: CompetitionConfidenceFactors;
 };
 
 export type CustomerRating = {
@@ -75,6 +83,12 @@ export type TradePress = {
   notables: string[];
 };
 
+export type QualityConfidenceFactors = {
+  trustpilot: boolean;
+  trade_press: boolean;
+  profile_verify: boolean;
+};
+
 export type QualitySection = {
   customer_rating?: CustomerRating | null;
   theme_sentiment: ThemeSentiment[];
@@ -84,6 +98,8 @@ export type QualitySection = {
   summary: string;
   citations: Citation[];
   confidence: ConfidenceLevel;
+  /** Pipeline signals for confidence tooltip (not from the LLM). */
+  confidence_factors?: QualityConfidenceFactors;
 };
 
 export type ReportConfidence = {

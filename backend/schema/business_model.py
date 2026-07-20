@@ -26,9 +26,13 @@ class BusinessModelSection(BaseModel):
         default_factory=list,
         description="Named products or services offered",
     )
-    summary: str = Field(description="5–8 sentence grounded business-model summary")
+    summary: str = Field(
+        description="2–3 sentence grounded business-model summary (keep brief)"
+    )
     citations: list[Citation] = Field(
         default_factory=list,
         description="Evidence for this section",
     )
-    confidence: ConfidenceLevel = Field(description="Confidence in this section")
+    confidence: ConfidenceLevel = Field(
+        description="Overwritten by pipeline: medium if SIC codes exist, else low"
+    )

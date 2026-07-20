@@ -12,6 +12,7 @@ import {
   type CompanyLookupResponse,
 } from "@/lib/api";
 import { parseCompanyQuery } from "@/lib/company-query";
+import { formatCompanyType } from "@/lib/company-type";
 import { cn } from "@/lib/utils";
 
 function Spinner({ className = "" }: { className?: string }) {
@@ -25,84 +26,117 @@ function Spinner({ className = "" }: { className?: string }) {
 
 function CompanyPanel({
   company,
+  candidates,
   loading,
+  onSelectCandidate,
 }: {
   company: CompanyLookupResponse | null;
+  candidates: CompanyLookupResponse[];
   loading: boolean;
+  onSelectCandidate: (item: CompanyLookupResponse) => void;
 }) {
   if (loading) {
     return (
       <div
-        className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 text-sm"
+        className="text-muted-foreground flex min-h-48 items-center justify-center text-sm"
         role="status"
         aria-live="polite"
       >
-        <Spinner className="size-6" />
-        <span>Searching…</span>
+        Searching…
       </div>
     );
   }
 
-  if (!company) {
+  if (company) {
     return (
-      <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-        Matched company will appear here
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+            Matched company
+          </p>
+          <div className="flex flex-col gap-2">
+            <h2 className="font-[family-name:var(--font-display)] text-2xl font-medium tracking-tight sm:text-3xl">
+              {company.company_name}
+            </h2>
+          </div>
+          <dl className="grid gap-3 text-sm">
+            <div>
+              <dt className="text-muted-foreground">Company number</dt>
+              <dd className="font-mono">{company.company_number}</dd>
+            </div>
+            {company.company_status && (
+              <div>
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="capitalize">{company.company_status}</dd>
+              </div>
+            )}
+            {company.company_type && (
+              <div>
+                <dt className="text-muted-foreground">Type</dt>
+                <dd>{formatCompanyType(company.company_type)}</dd>
+              </div>
+            )}
+            {company.date_of_creation && (
+              <div>
+                <dt className="text-muted-foreground">Created</dt>
+                <dd>{company.date_of_creation}</dd>
+              </div>
+            )}
+            {company.date_of_cessation && (
+              <div>
+                <dt className="text-muted-foreground">Ceased</dt>
+                <dd>{company.date_of_cessation}</dd>
+              </div>
+            )}
+            {company.address_snippet && (
+              <div>
+                <dt className="text-muted-foreground">Address</dt>
+                <dd>{company.address_snippet}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+
+        <Link
+          href={`/report/${encodeURIComponent(company.company_number)}`}
+          className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+        >
+          Generate report
+        </Link>
+      </div>
+    );
+  }
+
+  if (candidates.length > 0) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
+          Suggestions
+        </p>
+        <ul className="flex flex-col gap-1">
+          {candidates.map((item) => (
+            <li key={item.company_number}>
+              <button
+                type="button"
+                onClick={() => onSelectCandidate(item)}
+                className="hover:bg-muted/60 focus-visible:ring-ring w-full rounded-md px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <span className="font-medium">{item.company_name}</span>
+                <span className="text-muted-foreground mt-0.5 block text-xs leading-snug">
+                  Company number {item.company_number}
+                  {item.address_snippet ? ` · ${item.address_snippet}` : ""}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col justify-center gap-6">
-      <div className="flex flex-col gap-4">
-        <p className="text-muted-foreground text-xs tracking-[0.18em] uppercase">
-          Matched company
-        </p>
-        <div className="flex flex-col gap-2">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl font-medium tracking-tight sm:text-3xl">
-            {company.company_name}
-          </h2>
-          <p className="font-mono text-sm">{company.company_number}</p>
-        </div>
-        <dl className="grid gap-3 text-sm">
-          {company.company_status && (
-            <div>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd>{company.company_status}</dd>
-            </div>
-          )}
-          {company.company_type && (
-            <div>
-              <dt className="text-muted-foreground">Type</dt>
-              <dd>{company.company_type}</dd>
-            </div>
-          )}
-          {company.date_of_creation && (
-            <div>
-              <dt className="text-muted-foreground">Created</dt>
-              <dd>{company.date_of_creation}</dd>
-            </div>
-          )}
-          {company.date_of_cessation && (
-            <div>
-              <dt className="text-muted-foreground">Ceased</dt>
-              <dd>{company.date_of_cessation}</dd>
-            </div>
-          )}
-          {company.address_snippet && (
-            <div>
-              <dt className="text-muted-foreground">Address</dt>
-              <dd>{company.address_snippet}</dd>
-            </div>
-          )}
-        </dl>
-      </div>
-
-      <Link
-        href={`/report/${encodeURIComponent(company.company_number)}`}
-        className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
-      >
-        Generate report
-      </Link>
+    <div className="text-muted-foreground flex min-h-48 items-center justify-center text-sm">
+      Matched company will appear here
     </div>
   );
 }
@@ -125,6 +159,16 @@ export function CompanyLookupForm() {
     setPriorQuery(null);
   }
 
+  function selectCandidate(item: CompanyLookupResponse) {
+    setCompany(item);
+    setCandidates([]);
+    setAgentMessage(null);
+    setAwaitingFollowUp(false);
+    setPriorQuery(null);
+    setQuery("");
+    setError(null);
+  }
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
@@ -139,9 +183,19 @@ export function CompanyLookupForm() {
     try {
       if (result.type === "number" && !awaitingFollowUp) {
         resetSession();
-        const data = await lookupCompanyByNumber(result.value);
-        setCompany(data);
-        setQuery("");
+        try {
+          const data = await lookupCompanyByNumber(result.value);
+          setCompany(data);
+          setQuery("");
+        } catch (err) {
+          setCompany(null);
+          setAgentMessage(
+            err instanceof Error
+              ? err.message
+              : "Couldn’t find that company number. Check it and try again.",
+          );
+          setQuery("");
+        }
         return;
       }
 
@@ -183,25 +237,31 @@ export function CompanyLookupForm() {
       setAgentMessage(data.message);
       setQuery("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Lookup failed");
+      setCompany(null);
+      setAgentMessage(
+        err instanceof Error
+          ? err.message
+          : "Search couldn’t be completed. Please try again.",
+      );
+      setQuery("");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="grid min-h-[70vh] w-full grid-cols-1 md:grid-cols-2">
-      <section className="flex flex-col gap-8 px-6 py-10 md:pr-10 lg:px-12">
+    <div className="grid w-full max-w-5xl grid-cols-1 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
+      <section className="flex flex-col justify-center gap-8 px-2 py-6 md:px-8 md:py-4">
         <div className="flex flex-col gap-2">
           <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
             Citehouse
           </h1>
           <p className="text-muted-foreground text-sm">
-            Look up a UK company by name or Companies House number
+            Identify a UK registered company by legal name or Companies House number
           </p>
         </div>
 
-        <form onSubmit={onSubmit} className="flex max-w-lg flex-col gap-4">
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="company-query">
               {awaitingFollowUp ? "Add a detail" : "Company"}
@@ -235,7 +295,7 @@ export function CompanyLookupForm() {
             {loading ? (
               <span className="inline-flex items-center gap-2">
                 <Spinner className="border-primary-foreground/30 border-t-primary-foreground" />
-                Searching…
+                Searching Companies…
               </span>
             ) : awaitingFollowUp ? (
               "Continue"
@@ -245,39 +305,35 @@ export function CompanyLookupForm() {
           </Button>
         </form>
 
-        {loading && (
-          <p
-            className="text-muted-foreground flex max-w-lg items-center gap-2 text-sm"
-            role="status"
+        {!loading && agentMessage && (
+          <aside
+            className="border-border border-l-2 pl-4"
             aria-live="polite"
           >
-            <Spinner />
-            Searching Companies House…
-          </p>
-        )}
-
-        {!loading && agentMessage && (
-          <p className="max-w-lg text-sm leading-relaxed">{agentMessage}</p>
-        )}
-
-        {!loading && !company && candidates.length > 0 && (
-          <ul className="flex max-w-lg flex-col gap-2 text-sm">
-            {candidates.map((item) => (
-              <li key={item.company_number} className="leading-snug">
-                <span className="font-medium">{item.company_name}</span>
-                <span className="text-muted-foreground">
-                  {" "}
-                  · {item.company_number}
-                  {item.address_snippet ? ` · ${item.address_snippet}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
+            {(company || !(awaitingFollowUp || candidates.length > 0)) && (
+              <p className="text-muted-foreground mb-1.5 text-xs tracking-[0.14em] uppercase">
+                {company ? "Match" : "No match"}
+              </p>
+            )}
+            <p className="text-[0.9375rem] leading-relaxed text-pretty">
+              {agentMessage}
+            </p>
+          </aside>
         )}
       </section>
 
-      <section className="border-border border-t px-6 py-10 md:border-t-0 md:border-l md:pl-10 lg:px-12">
-        <CompanyPanel company={company} loading={loading} />
+      <div
+        className="border-border my-2 border-t md:mx-0 md:my-0 md:h-auto md:w-px md:self-stretch md:border-t-0 md:border-l"
+        aria-hidden
+      />
+
+      <section className="flex flex-col justify-center px-2 py-6 md:px-8 md:py-4">
+        <CompanyPanel
+          company={company}
+          candidates={candidates}
+          loading={loading}
+          onSelectCandidate={selectCandidate}
+        />
       </section>
     </div>
   );

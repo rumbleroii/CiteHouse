@@ -1,6 +1,8 @@
 import type { QualitySection } from "@/lib/intelligence";
+import { qualityConfidenceTooltip } from "@/lib/confidence";
 import {
   CitationsList,
+  ConfidenceWithTooltip,
   SectionLabel,
   TagList,
 } from "@/components/intelligence/shared";
@@ -13,10 +15,22 @@ const polarityClass: Record<string, string> = {
 };
 
 export function QualitySectionView({ section }: { section: QualitySection }) {
+  const content = qualityConfidenceTooltip(
+    section.confidence,
+    section.confidence_factors,
+  );
+
   return (
     <section className="border-line mt-10 border-t pt-10 motion-reduce:animate-none animate-[dossier-rise_0.5s_ease-out_both]">
-      <SectionLabel>Reputation &amp; quality · {section.confidence}</SectionLabel>
-      <p className="text-ink mt-4 max-w-prose font-[family-name:var(--font-display)] text-xl leading-snug">
+      <SectionLabel>
+        Reputation &amp; quality ·{" "}
+        <ConfidenceWithTooltip
+          level={section.confidence}
+          content={content}
+          tooltipId="quality-confidence-tooltip"
+        />
+      </SectionLabel>
+      <p className="text-ink mt-4 max-w-prose text-base leading-relaxed">
         {section.summary}
       </p>
       <p className="text-muted-foreground mt-3 max-w-prose text-sm">

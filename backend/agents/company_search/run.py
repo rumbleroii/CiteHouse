@@ -7,8 +7,29 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from agents.company_search.agent import AgentDecision, CompanyHit, get_agent
+from agents.company_search.agent import (
+    AgentDecision,
+    CompanyHit,
+    get_agent,
+    reset_search_tries,
+)
 from services.search_companies import search_by_company_number
+
+_SEARCH_FAILED_MESSAGE = (
+    "Search couldn’t be completed right now. Try again, or enter a Companies House number."
+)
+_NO_DECISION_MESSAGE = (
+    "Couldn’t determine a matching company. Try a more specific name or Companies House number."
+)
+
+
+def _empty_not_found(message: str) -> dict:
+    return {
+        "status": "not_found",
+        "message": message,
+        "company": None,
+        "candidates": [],
+    }
 
 
 def _build_prompt(
@@ -43,32 +64,38 @@ async def run_agentic_search(
 
     try:
         agent = get_agent()
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except RuntimeError:
+        return _empty_not_found(_SEARCH_FAILED_MESSAGE)
 
     prompt = _build_prompt(text, prior_query=prior_query, candidates=candidates)
+    reset_search_tries()
 
     try:
         # Fresh run each time — no checkpointer (avoids INVALID_CHAT_HISTORY).
+        # ~2 graph steps per tool call; budget for 5 search tries + get_company + decision.
         result = await agent.ainvoke(
             {"messages": [{"role": "user", "content": prompt}]},
+            config={"recursion_limit": 25},
         )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Agentic search failed: {exc}",
-        ) from exc
+    except Exception:
+        return _empty_not_found(_SEARCH_FAILED_MESSAGE)
 
     decision = result.get("structured_response")
     if not isinstance(decision, AgentDecision):
-        raise HTTPException(status_code=502, detail="Agent returned no structured decision")
+        return _empty_not_found(_NO_DECISION_MESSAGE)
 
     company: CompanyHit | None = None
     resolved_candidates: list[CompanyHit] = []
 
     if decision.status == "found" and decision.company_number:
-        raw = await search_by_company_number(decision.company_number)
-        company = CompanyHit(**raw)
+        try:
+            raw = await search_by_company_number(decision.company_number)
+            company = CompanyHit(**raw)
+        except HTTPException:
+            return _empty_not_found(
+                "Found a possible match but couldn’t load its details. "
+                "Try again or enter the company number directly."
+            )
     elif decision.status == "needs_clarification":
         for number in decision.candidates[:5]:
             try:
@@ -77,7 +104,6 @@ async def run_agentic_search(
             except HTTPException:
                 continue
     elif decision.status == "not_found":
-        # Keep message explicit for the UI.
         if not decision.message.strip():
             decision.message = "No matching company found."
 

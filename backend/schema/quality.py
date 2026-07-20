@@ -37,6 +37,20 @@ class TradePress(BaseModel):
     )
 
 
+class QualityConfidenceFactors(BaseModel):
+    """Deterministic signals used for quality confidence (pipeline-set)."""
+
+    trustpilot: bool = Field(
+        description="Web hit names the company and references Trustpilot",
+    )
+    trade_press: bool = Field(
+        description="Web hit names the company and looks like trade/news press",
+    )
+    profile_verify: bool = Field(
+        description="At least one web hit also matches address/locality/number from the profile",
+    )
+
+
 class QualitySection(BaseModel):
     """Customer and trade-press quality profile."""
 
@@ -55,9 +69,17 @@ class QualitySection(BaseModel):
         description="Composite quality score 1 (poor) to 5 (strong)",
     )
     quality_rationale: str = Field(description="Short rationale for quality_score")
-    summary: str = Field(description="Short quality summary")
+    summary: str = Field(
+        description="2–3 sentence quality summary (keep brief)"
+    )
     citations: list[Citation] = Field(
         default_factory=list,
         description="Evidence for this section",
     )
-    confidence: ConfidenceLevel = Field(description="Confidence in this section")
+    confidence: ConfidenceLevel = Field(
+        description="Overwritten by pipeline: medium if Trustpilot+trade press+profile verify, else low"
+    )
+    confidence_factors: QualityConfidenceFactors | None = Field(
+        default=None,
+        description="Pipeline ticks for Trustpilot, trade press, and profile corroboration",
+    )
