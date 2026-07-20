@@ -35,27 +35,12 @@ function StatusChip({ status }: { status: string }) {
 function CompanyPanel({
   company,
   candidates,
-  loading,
   onSelectCandidate,
 }: {
   company: CompanyLookupResponse | null;
   candidates: CompanyLookupResponse[];
-  loading: boolean;
   onSelectCandidate: (item: CompanyLookupResponse) => void;
 }) {
-  if (loading) {
-    return (
-      <div
-        className="text-muted-foreground flex min-h-48 items-center justify-center gap-2 text-sm"
-        role="status"
-        aria-live="polite"
-      >
-        <Spinner />
-        Searching…
-      </div>
-    );
-  }
-
   if (company) {
     return (
       <div className="motion-reduce:animate-none flex flex-col gap-6 animate-[dossier-rise_0.45s_ease-out_both]">
@@ -343,7 +328,6 @@ export function CompanyLookupForm() {
         <CompanyPanel
           company={company}
           candidates={candidates}
-          loading={loading}
           onSelectCandidate={selectCandidate}
         />
       </section>
